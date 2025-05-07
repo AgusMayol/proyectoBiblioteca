@@ -1,12 +1,31 @@
+print()
+print("-----------------------------------------")
+print(" ¡Bienvenido al sistema de Biblioteca!")
+print("-----------------------------------------")
+print()
+
 # Inicio de sesión
-usuario = str(input("Ingrese su nombre de usuario"))
-contrasenia = str(input("Ingrese su contrasenia"))
+print()
+print("Por favor, ingrese sus credenciales.")
+print("-----------------------------------------")
+usuario = input("   Nombre de usuario: ")
+contrasenia = input("   Contraseña: ")
+print()
+print("   Hola de nuevo,", usuario, "👋")
+print()
+
 
 # Menú de navegación
-print("1- Buscar libros")
-print("2- Alquilar libro")
-print("3- Devolver libro")
-print("4- Préstamos activos")
-print("5- Buscar usuario")
+print()
+print("Menú de navegación")
+print("-----------------------------------------")
+print("   1) Buscar libros disponibles")
+print("   2) Alquilar un libro")
+print("   3) Devolver un libro")
+print("   4) Ver préstamos activos")
+print("   5) Buscar un usuario")
+print()
+
+menuSelected = input("   →  ")
 
 # Validacion de datos
