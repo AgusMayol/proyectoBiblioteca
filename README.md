@@ -11,7 +11,11 @@
 
 
 
- COSAS QUE ARREGLAR
-    - MENU: 1, 2 hacerlo funcional, POR QUE NO TIENE NADA
-    - MENU 4: Al agregar un libro, informar success y volver al menú
+COSAS PENDIENTES:
+    - MENU: 3 hacerlo funcional, POR QUE NO TIENE NADA
     - Preveer erorres en caso de que no existan los índices (ISBN, USUARIOS, PRESTAMOS ACTIVOS...)
+    - Modificar libros
+    - Busqueda por ISBN
+    - Sistema de stock de libros
+    - Ordenamiento por stock
+    - Libreria random
