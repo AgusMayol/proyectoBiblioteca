@@ -12,6 +12,3 @@
 
 
 COSAS PENDIENTES:
-    - Preveer erorres en caso de que no existan los índices (ISBN, USUARIOS, PRESTAMOS ACTIVOS...)
-    - Modificar libros
-    - Libreria random

@@ -1,7 +1,7 @@
 # FALTA: Alta, baja, lectura y modificación en cada función
 # Terminar los menues
 
-
+import random
 nombres_usuarios = ["agustin", "victoria", "iara", "fionna", "mateo", "prueba"]
 contra_usuarios = ["mayol", "martins", "godoy", "belloni", "bichutte", "prueba"]
 permisos_usuarios = [1,1,1,1,1,0]
@@ -15,19 +15,15 @@ libros_stock = [5, 4, 1, 1, 1] #cantidad de libos que le pertenecen a la bibliot
 libros_disponibles = [5, 4, 1, 0, 0] #cantidad de libros disponibles para alquilar
 
 def encontrar_valor(valor, lista):
-    encontrado = False
-    pos_encontrado = -1
     cont = 0
-    #Mientras no lo encontremos y no lleguemos al final de la lista
-    while cont < len(lista) and not encontrado:
+    while cont < len(lista): #Mientras no lleguemos al final de la lista
         if lista[cont] == valor:
-            encontrado = True
-            pos_encontrado = cont
+            return cont  # Encontrado: devuelve posicion del valor en la lista
         cont = cont + 1
-    return pos_encontrado #Devuelve la posición del valor en la lista. Caso contrario, devuelve -1.
+    return -1  # Se ejecuta si no se encontro nada
+
 
 def login(usuario, contrasenia, nombres_usuarios, contra_usuarios, usuarioActual):
-
     indiceUsuarios = encontrar_valor(usuario, nombres_usuarios) #Busca el usuario ingresado en la lista de TODOS los usuarios.
     indiceContrasenia = encontrar_valor(contrasenia, contra_usuarios) #Busca la contraseña ingresada en la lista de TODAS las contraseñas.
 
@@ -36,7 +32,7 @@ def login(usuario, contrasenia, nombres_usuarios, contra_usuarios, usuarioActual
         usuarioActual.append(contra_usuarios[indiceUsuarios])
         usuarioActual.append(permisos_usuarios[indiceUsuarios])
         usuarioActual.append(indiceUsuarios)
-    else:
+    else: #Si el usuario o contraseña no existen, o existen pero no coinciden en posicion
         print("   Usuario o contraseña incorrectos. Por favor, intente nuevamente.")
         print()
 
@@ -61,9 +57,9 @@ def showLogin(nombres_usuarios, contra_usuarios, usuarioActual):
     print("-----------------------------------------")
     print("Por favor, ingrese sus credenciales.")
     print("-----------------------------------------")
-    usuario = ""
+    usuario = ""    #Creacion de variables vacias
     contrasenia = ""
-    while not len(usuarioActual):
+    while len(usuarioActual) == 0:
 
         usuario = input("   Nombre de usuario: ")
         while not usuario: #El campo no puede estar vacío
@@ -92,7 +88,7 @@ def verLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usuarioA
     for i in range(len(indices)):
         max_idx = i
         for j in range(i+1, len(indices)):
-            if libros_disponibles[indices[j]] > libros_disponibles[indices[max_idx]]:
+            if libros_disponibles[indices[j]] > libros_disponibles[indices[max_idx]]: #idx es el indice de un libro en esas listas (ver )
                 max_idx = j
         indices[i], indices[max_idx] = indices[max_idx], indices[i]
 
@@ -122,18 +118,30 @@ def agregarLibro(titulos_libros, autores_libros, isbn, libros_stock, libros_disp
     print()
     print("Ingrese el título del libro:")
     agregarTitulo = input("   →  ")
+    while agregarTitulo == "":
+        print("El título no puede estar vacío. Ingrese el nuevo título:")
+        agregarTitulo = input("   →  ")
     titulos_libros.append(agregarTitulo)
     print()
     print("Ingrese el autor del libro:")
     agregarAutor = input("   →  ")
+    while agregarAutor == "":
+        print("El autor no puede estar vacío. Ingrese el nuevo autor:")
+        agregarAutor = input("   →  ")
     autores_libros.append(agregarAutor)
     print()
     print("Ingrese el ISBN:")
     agregarISBN = int(input("   →  "))
+    while agregarISBN == "":
+        print("El ISBN no puede estar vacío. Ingrese el nuevo ISBN:")
+        agregarISBN = int(input("   →  "))
     isbn.append(agregarISBN)
-
+    print()
     print("Ingrese la cantidad de libros a agregar:")
     agregarStock = int(input("   →  "))
+    while agregarStock <= 0:
+        print("La cantidad de libros a agregar debe ser mayor a 0. Ingrese la cantidad de libros a agregar:")
+        agregarStock = int(input("   →  "))
     libros_stock.append(agregarStock)
     libros_disponibles.append(agregarStock)
 
@@ -143,7 +151,7 @@ def agregarLibro(titulos_libros, autores_libros, isbn, libros_stock, libros_disp
     verLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usuarioActual)
 
 #Eliminar libro
-def eliminarDatos(titulos_libros, autores_libros, isbn):
+def eliminarDatos(titulos_libros, autores_libros, isbn, libros_disponibles):
     print("-----------------------------------------")
     print("Ingrese el ISBN del libro que quiere eliminar")
     print("-----------------------------------------")
@@ -158,6 +166,7 @@ def eliminarDatos(titulos_libros, autores_libros, isbn):
         elif libros_disponibles[posicionLibro] < libros_stock[posicionLibro]: 
             print("Error, no se puede eliminar un libro que está actualmente alquilado.")
         print()
+        print("Ingrese el ISBN del libro que quiere eliminar")
         eliminarIsbn = int(input("   →  "))
         posicionLibro =  encontrar_valor(eliminarIsbn, isbn)
     
@@ -185,7 +194,7 @@ def alquilarLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usu
     indiceLibro = 0 #empieza en 0 y en el for recorre toda la lista y cuando encuentra el indice busca el titulo, autor, isbn
     otrosLibrosDisponibles = 0
 
-    for libro in titulos_libros: #busca cuantos libros hay
+    for libro in titulos_libros: #recorre todos los libros de la lista
         indiceLibro = encontrar_valor(libro, titulos_libros)
         
         titulo = titulos_libros[indiceLibro]
@@ -193,7 +202,7 @@ def alquilarLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usu
         isbn_libro = isbn[indiceLibro]
         disponible = libros_disponibles[indiceLibro]
         
-        if disponible > 0: #si el libro esta disponible muestra todos los datos de todos los libros 
+        if disponible >= 1: #muestra todos los datos de todos los libros disponibles
             otrosLibrosDisponibles = otrosLibrosDisponibles + 1
             librosISBN.append(isbn_libro)
             codigos.append(otrosLibrosDisponibles)
@@ -217,7 +226,7 @@ def alquilarLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usu
 
     while menuSelected < -1 or menuSelected > maximo:
         print()
-        print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
+        print("Opción inválida. Por favor, elija una opción en el rango indicado.")
         print("-----------------------------------------")
         print("Libros disponibles")
         print("-----------------------------------------")
@@ -243,6 +252,21 @@ def alquilarLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usu
             print(f"No hay stock disponible para el libro {libroNombre}.")
         input("Presione Enter para volver al menú...")
         menuNavegacion()
+
+#Me siento con suerte
+def tengoSuerte(titulos_libros, autores_libros):
+    print("-----------------------------------------")
+    print("Bienvenido a me siento con suerte")
+    print("-----------------------------------------")
+    print("Se eligira un libro al azar y esa sera nuestra recomendacion para usted!")
+    indice_random = random.randint(1, len(titulos_libros))
+    titulo_random = titulos_libros[indice_random]
+    autor_random = autores_libros[indice_random]
+    print("El título que elegimos para usted fue:", titulo_random, "   -    de", autor_random)
+    print("Puedes encontrar este libro en la biblioteca! Acuerdate de verificar si hay stock disponible.")
+    print()
+    input("Presione Enter para volver al menú...")
+    menuNavegacion()
 
 
 #Devolver libros
@@ -365,7 +389,6 @@ def buscarLibroPorISBN(titulos_libros, autores_libros, isbn, libros_disponibles,
         print(f"\n   Título: {titulos_libros[indice]}")
         print(f"   Autor: {autores_libros[indice]}")
         print(f"   ISBN: {isbn[indice]}")
-        print(f"   Stock total: {libros_stock[indice]}")
         if libros_disponibles[indice] < 1:
             print(f"   No hay stock disponible.")
         else:
@@ -373,6 +396,100 @@ def buscarLibroPorISBN(titulos_libros, autores_libros, isbn, libros_disponibles,
         print()
         input("Presione Enter para volver al menú...")
         menuNavegacion()
+
+#Modificar libro
+def modificarLibro(isbn, titulos_libros, autores_libros, libros_disponibles, libros_stock):
+    print("-----------------------------------------")
+    print("Modificar libros")
+    print("-----------------------------------------")
+    print("Ingrese el isbn del libro que desea modificar")
+    print()
+    isbn_a_modificar = int(input("   →  "))
+    print()
+    while encontrar_valor(isbn_a_modificar, isbn) == -1:
+        print("Error. Ingrese un ISBN válido y existente:")
+        isbn_a_modificar = int(input("   →  "))
+        print()
+
+    editando = True
+    while editando:
+        indice_segun_isbn = encontrar_valor(isbn_a_modificar, isbn)
+        #Obtener los datos ACTUALES del libro
+        titulo = titulos_libros[indice_segun_isbn]
+        autor = autores_libros[indice_segun_isbn]
+        libro_stock_disponible = libros_disponibles[indice_segun_isbn]
+        copias_en_propiedad = libros_stock[indice_segun_isbn]
+
+        print()
+        print("   1) Modificar el titulo")
+        print("   2) Modificar el autor")
+        print("   3) Modificar el isbn")
+        print("   4) Modificar el stock disponible") #Libros que la biblioteca tiene disponibles para prestar.
+        print()
+        parte_a_modificar = int(input("   →  "))
+        print()
+        while parte_a_modificar < 1 or parte_a_modificar > 4:
+            print("Error. Ingrese una opción válida (1-4):")
+            print()
+            print("   1) Modificar el titulo")
+            print("   2) Modificar el autor")
+            print("   3) Modificar el isbn")
+            print("   4) Modificar el stock disponible") #Libros que la biblioteca tiene disponibles para prestar.
+            print()
+            parte_a_modificar = int(input("   →  "))
+
+        if parte_a_modificar == 1:
+            print(f'      Título actual: {titulo}')
+            print("Ingrese el nuevo título (Ingrese Enter para mantener el mismo valor)")
+            nuevo_titulo = input("   →  ")
+            if nuevo_titulo == "":
+                nuevo_titulo = titulo
+            titulos_libros[indice_segun_isbn] = nuevo_titulo
+        elif parte_a_modificar == 2:
+            print(f'      Autor actual: {autor}')
+            print("Ingrese el nuevo autor (Ingrese Enter para mantener el mismo valor)")
+            nuevo_autor = input("   →  ")
+            if nuevo_autor == "":
+                nuevo_autor = autor
+            autores_libros[indice_segun_isbn] = nuevo_autor
+        elif parte_a_modificar == 3:
+            print(f'      ISBN actual: {isbn_a_modificar}')
+            print("Ingrese el nuevo isbn (Ingrese Enter para mantener el mismo valor)")
+            nuevo_isbn = int(input("   →  "))
+            if nuevo_isbn == "":
+                nuevo_isbn = isbn_a_modificar
+            else:
+                while encontrar_valor(int(nuevo_isbn), isbn) != -1 and nuevo_isbn != isbn_a_modificar:
+                    print("Error. Ingrese un ISBN que no exista:")
+                    nuevo_isbn = int(input("   →  ")) 
+            
+            isbn_a_modificar = nuevo_isbn
+            isbn[indice_segun_isbn] = nuevo_isbn
+        elif parte_a_modificar == 4:
+            print(f'      Libros disponibles actuales: {libro_stock_disponible}')
+            print("Ingrese la nueva cantidad de libros disponibles (Ingrese Enter para mantener el mismo valor)")
+            nuevo_stock = int(input("   →  "))
+            while nuevo_stock < 0:
+                print("Error. Ingrese una cantidad válida (número mayor o igual a 0):")
+                nuevo_stock = input("   →  ")
+            libros_disponibles[indice_segun_isbn] = nuevo_stock
+
+        print("Datos actualizados correctamente.")
+        print()
+        print("Deseas seguir modificando el libro?")
+        print("   1) Si")
+        print("   2) No")
+        print()
+        seguir_modificando = int(input("   →  "))
+        while seguir_modificando < 1 or seguir_modificando > 2:
+            print("Error. Ingrese una opción válida (1-2):")
+            seguir_modificando = int(input("   →  "))
+
+        if seguir_modificando == 2:
+            editando = False
+            menuNavegacion()
+
+    
 
 # Definir Función Menú de navegación
 def menuNavegacion():
@@ -384,10 +501,12 @@ def menuNavegacion():
     print("   3) Alquilar un libro disponible")
     print("   4) Devolver un libro alquilado")
     print("   5) Ver tus préstamos activos")
+    print("   6) Me siento con suerte")
     if usuarioActual[2] == 1:
-        print("   6) Añadir un libro a la biblioteca")
-        print("   7) Eliminar un libro de la biblioteca")
-        print("   8) Ver todos los prestamos activos")
+        print("   7) Añadir un libro a la biblioteca")
+        print("   8) Modificar un libro")
+        print("   9) Eliminar un libro de la biblioteca")
+        print("   10) Ver todos los prestamos activos")
     print()
     print("   -1) Cerrar sesión")
     print("   -2) Salir del programa")
@@ -398,10 +517,10 @@ def menuNavegacion():
     # Validacion de datos del menu de navegacion
     
     # Valida que: 
-    # 1. El número no sea menor a 1 ni mayor a 8.
-    # 2. Si el usuario no es admin (usuarioActual[2] != 1), el número no puede ser mayor a 4, excepto la opción 8.
+    # 1. El número no sea menor a -2 ni mayor a 10.
+    # 2. Si el usuario no es admin (usuarioActual[2] != 1), el número no puede ser mayor a 6.
 
-    while (menuSelected < -2 or menuSelected >  8) or (usuarioActual[2] != 1 and menuSelected > 4 and menuSelected != 8):
+    while (menuSelected < -2 or menuSelected >  10) or (usuarioActual[2] != 1 and menuSelected > 6):
         print()
         print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
         print("-----------------------------------------")
@@ -412,11 +531,14 @@ def menuNavegacion():
         print("   3) Alquilar un libro disponible")
         print("   4) Devolver un libro alquilado")
         print("   5) Ver tus préstamos activos")
+        print("   6) Me siento con suerte")
         
         if usuarioActual[2] == 1:
-            print("   6) Añadir un libro a la biblioteca")
-            print("   7) Eliminar un libro de la biblioteca")
-            print("   8) Ver todos los prestamos activos")
+            print("   7) Añadir un libro a la biblioteca")
+            print("   8) Modificar un libro")
+            print("   9) Eliminar un libro de la biblioteca")
+            print("   10) Ver todos los prestamos activos")
+
         print()
         print("   -1) Cerrar sesión")
         print("   -2) Salir del programa")
@@ -436,10 +558,14 @@ def menuNavegacion():
     elif menuSelected == 5:
         prestamosActivos(prestamos_activos, isbn)
     elif menuSelected == 6:
-        agregarLibro(titulos_libros, autores_libros, isbn, libros_stock, libros_disponibles)
+        tengoSuerte(titulos_libros, autores_libros)
     elif menuSelected == 7:
-        eliminarDatos(titulos_libros, autores_libros, isbn)
+        agregarLibro(titulos_libros, autores_libros, isbn, libros_stock, libros_disponibles)
     elif menuSelected == 8:
+        modificarLibro(isbn, titulos_libros, autores_libros, libros_disponibles, libros_stock)
+    elif menuSelected == 9:
+        eliminarDatos(titulos_libros, autores_libros, isbn, libros_disponibles)
+    elif menuSelected == 10:
         prestamosActivosTodos(prestamos_activos, isbn, nombres_usuarios, titulos_libros)
     elif menuSelected == -1:
         cerrarSesion(usuarioActual)
