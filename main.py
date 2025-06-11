@@ -1,11 +1,41 @@
-# FALTA: Alta, baja, lectura y modificación en cada función
-# Terminar los menues
-
 import random
 nombres_usuarios = ["agustin", "victoria", "iara", "fionna", "mateo", "prueba"]
 contra_usuarios = ["mayol", "martins", "godoy", "belloni", "bichutte", "prueba"]
 permisos_usuarios = [1,1,1,1,1,0]
 prestamos_activos = [ [94], [3948], [], [], [], [] ]
+lugar_de_residencia = ["almagro", "lanus", "flores", "almagro", "almagro", "lanus"]
+
+def estadistica_residencia(lugar_de_residencia):
+    # Crear una matriz para almacenar [lugar, cantidad]
+    matriz_residencias = []
+    
+    # Recorrer todos los lugares de residencia
+    for lugar in lugar_de_residencia:
+        # Buscar si el lugar ya está en la matriz
+        encontrado = False
+        for i in range(len(matriz_residencias)):
+
+            if matriz_residencias[i][0] == lugar:
+                # Si lo encuentra, incrementa el contador
+                matriz_residencias[i][1] += 1
+                encontrado = True
+        
+        # Si no lo encuentra, agregar nueva entrada
+        if not encontrado:
+            matriz_residencias.append([lugar, 1])
+
+    # Imprimir estadísticas
+    print("-----------------------------------------")
+    print("Estadísticas de lugares de residencia")
+    print("-----------------------------------------")
+    for residencia in matriz_residencias:
+        print(f"   {residencia[0]}: {residencia[1]} usuarios")
+    print()
+    
+    input("Presione Enter para volver al menú...")
+    menuNavegacion()
+
+
 #Listas paralelas: Los indices de todas las listas deben coincidir en longitud.
 usuarioActual = []
 titulos_libros= ["Heartless","Cazadores de brujas","It","Wicked","Serpent"]
@@ -77,7 +107,7 @@ def showLogin(nombres_usuarios, contra_usuarios, usuarioActual):
 
     menuNavegacion()
 
-def verLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usuarioActual): #Muestra todos los libros de la biblioteca, disponibles o no.
+def verLibros(titulos_libros, autores_libros, isbn, libros_disponibles): #Muestra todos los libros de la biblioteca, disponibles o no.
     print("-----------------------------------------")
     print("Todos los libros de la biblioteca")
     print("-----------------------------------------")
@@ -148,7 +178,7 @@ def agregarLibro(titulos_libros, autores_libros, isbn, libros_stock, libros_disp
     print()
     print(f"Se han agregado {agregarStock} copias del libro: {agregarTitulo}, de {agregarAutor}, con el ISBN {agregarISBN}.")
     print()
-    verLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usuarioActual)
+    verLibros(titulos_libros, autores_libros, isbn, libros_disponibles)
 
 #Eliminar libro
 def eliminarDatos(titulos_libros, autores_libros, isbn, libros_disponibles):
@@ -194,9 +224,8 @@ def alquilarLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usu
     indiceLibro = 0 #empieza en 0 y en el for recorre toda la lista y cuando encuentra el indice busca el titulo, autor, isbn
     otrosLibrosDisponibles = 0
 
-    for libro in titulos_libros: #recorre todos los libros de la lista
-        indiceLibro = encontrar_valor(libro, titulos_libros)
-        
+    for i in range(len(titulos_libros)):
+        indiceLibro = i
         titulo = titulos_libros[indiceLibro]
         autor = autores_libros[indiceLibro]
         isbn_libro = isbn[indiceLibro]
@@ -271,14 +300,12 @@ def tengoSuerte(titulos_libros, autores_libros):
 
 #Devolver libros
 def devolverLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usuarioActual):
-    contador = 1
     print("-----------------------------------------")
     print("Libros alquilados")
     print("-----------------------------------------")
     librosISBN = []
     codigos = [] 
     maximo = 0 
-    indiceLibro = 0 
     otrosLibrosAlquilados = 0
     usuario_idx = usuarioActual[3]
     prestamos_usuario = prestamos_activos[usuario_idx]
@@ -286,21 +313,21 @@ def devolverLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usu
     if not prestamos_usuario:
         print("No hay préstamos activos para devolver.")
         print()
+        input("Presione Enter para volver al menú...")
         menuNavegacion()
-        return
 
-    for i, libro_isbn in enumerate(prestamos_usuario):
-        indiceISBN = encontrar_valor(libro_isbn, isbn)
+    for i in range(len(prestamos_usuario)):
+        libro = prestamos_usuario[i]
+        indiceISBN = encontrar_valor(libro, isbn)
         titulo = titulos_libros[indiceISBN]
         autor = autores_libros[indiceISBN]
-        disponible = libros_disponibles[indiceISBN]
         otrosLibrosAlquilados += 1
-        librosISBN.append(libro_isbn)
+        librosISBN.append(libro)
         codigos.append(otrosLibrosAlquilados)
         print(f"   {otrosLibrosAlquilados})")
         print(f'      Título: {titulo}')
         print(f'      Autor: {autor}') 
-        print(f'      ISBN: {libro_isbn}')
+        print(f'      ISBN: {libro}')
         print()
         maximo += 1
 
@@ -341,7 +368,8 @@ def prestamosActivos(prestamos_activos, isbn):
     print("-----------------------------------------")
     print(f'Prestamos activos de {usuarioActual[0]}')
     print("-----------------------------------------")
-    for libro in prestamos_activos[usuarioActual[3]]:
+    for i in range(len(prestamos_activos[usuarioActual[3]])):
+        libro = prestamos_activos[usuarioActual[3]][i]
         indiceISBN = encontrar_valor(libro, isbn)
         titulo = titulos_libros[indiceISBN]
         print(f'   {titulo}')
@@ -361,11 +389,13 @@ def prestamosActivosTodos(prestamos_activos, isbn, nombres_usuarios, titulos_lib
     print("-----------------------------------------")
     print("Prestamos activos de todos los usuarios")
     print("-----------------------------------------")
-    for prestamo in prestamos_activos:
+    for i in range(len(prestamos_activos)):
+        prestamo = prestamos_activos[i]
         if(prestamo != []):
             indicePrestamo = encontrar_valor(prestamo, prestamos_activos)
             print(f'{nombres_usuarios[indicePrestamo]}:')
-            for libro in prestamos_activos[indicePrestamo]:
+            for j in range(len(prestamos_activos[indicePrestamo])):
+                libro = prestamos_activos[indicePrestamo][j]
                 indiceISBN = encontrar_valor(libro, isbn)
                 titulo = titulos_libros[indiceISBN]
                 print(f'   {titulo}')
@@ -489,7 +519,7 @@ def modificarLibro(isbn, titulos_libros, autores_libros, libros_disponibles, lib
             editando = False
             menuNavegacion()
 
-    
+
 
 # Definir Función Menú de navegación
 def menuNavegacion():
@@ -507,6 +537,7 @@ def menuNavegacion():
         print("   8) Modificar un libro")
         print("   9) Eliminar un libro de la biblioteca")
         print("   10) Ver todos los prestamos activos")
+        print("   11) Estadistica de permisos")
     print()
     print("   -1) Cerrar sesión")
     print("   -2) Salir del programa")
@@ -520,7 +551,7 @@ def menuNavegacion():
     # 1. El número no sea menor a -2 ni mayor a 10.
     # 2. Si el usuario no es admin (usuarioActual[2] != 1), el número no puede ser mayor a 6.
 
-    while (menuSelected < -2 or menuSelected >  10) or (usuarioActual[2] != 1 and menuSelected > 6):
+    while (menuSelected < -2 or menuSelected >  11) or (usuarioActual[2] != 1 and menuSelected > 6):
         print()
         print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
         print("-----------------------------------------")
@@ -538,6 +569,7 @@ def menuNavegacion():
             print("   8) Modificar un libro")
             print("   9) Eliminar un libro de la biblioteca")
             print("   10) Ver todos los prestamos activos")
+            print("   11) Estadistica de permisos")
 
         print()
         print("   -1) Cerrar sesión")
@@ -548,7 +580,7 @@ def menuNavegacion():
     print()
 
     if menuSelected == 1:
-        verLibros(titulos_libros, autores_libros, isbn, libros_disponibles, usuarioActual)
+        verLibros(titulos_libros, autores_libros, isbn, libros_disponibles)
     elif menuSelected == 2:
         buscarLibroPorISBN(titulos_libros, autores_libros, isbn, libros_disponibles, libros_stock)
     elif menuSelected == 3:
@@ -567,6 +599,8 @@ def menuNavegacion():
         eliminarDatos(titulos_libros, autores_libros, isbn, libros_disponibles)
     elif menuSelected == 10:
         prestamosActivosTodos(prestamos_activos, isbn, nombres_usuarios, titulos_libros)
+    elif menuSelected == 11:
+        estadistica_residencia(lugar_de_residencia)
     elif menuSelected == -1:
         cerrarSesion(usuarioActual)
     elif menuSelected == -2:

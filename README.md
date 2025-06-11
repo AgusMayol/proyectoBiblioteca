@@ -12,3 +12,4 @@
 
 
 COSAS PENDIENTES:
+-Matrices y agregar porcentajes según zona
