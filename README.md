@@ -8,8 +8,3 @@
  - Victoria Martins
  - Fionna Belloni
  - Mateo Bichutte
-
-
-
-COSAS PENDIENTES:
--Matrices y agregar porcentajes según zona
