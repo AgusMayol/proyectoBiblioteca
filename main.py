@@ -81,15 +81,16 @@ def verTodosLosLibros(titulos_libros, autores_libros, isbn, libros_disponibles):
         indices.append(i)
         
     # Ordenamiento por selección (mayor a menor stock)
-    for i in range(len(indices)):
-        max_idx = i
-        for j in range(i+1, len(indices)):
-            if libros_disponibles[indices[j]] > libros_disponibles[indices[max_idx]]: #idx es el indice de un libro en esas listas (ver )
-                max_idx = j
+    for i in range(len(indices)): #Recorre la lista de los indices
+        max_idx = i # Establece como que el valor máximo encontrado es el N°1 en la lista
+        for j in range(i+1, len(indices)): #Busca en el resto de la lista, los valores mayores a la I
+            if libros_disponibles[indices[j]] > libros_disponibles[indices[max_idx]]: # Compara el valor de la posicion J con el valor de la posicion Max_idx
+                max_idx = j # Si el valor de la posicion J es mayor, se actualiza el valor de Max_idx
                 
-        temp = indices[i]
-        indices[i] = indices[max_idx]
-        indices[max_idx] = temp
+        # Intercambio de valores (para que el valor más grande quede al principio de la lista)
+        temp = indices[i] # Guarda el valor de la posicion I en una variable temporal
+        indices[i] = indices[max_idx] # Reemplaza el valor de la posicion I con el valor de la posicion Max_idx
+        indices[max_idx] = temp # Reemplaza el valor de la posicion Max_idx con el valor de la variable temporal
 
     for idx_pos in range(len(indices)):
         idx = indices[idx_pos]
@@ -123,18 +124,18 @@ def buscarLibroPorISBN(titulos_libros, autores_libros, isbn, libros_disponibles)
         indice = encontrar_valor(entrada, isbn)
         if indice == -1:
             print("No se encontró ningún libro con ese ISBN.")
-            continue
-        # Si lo encuentra, mostrar datos
-        print(f"\n   Título: {titulos_libros[indice]}")
-        print(f"   Autor: {autores_libros[indice]}")
-        print(f"   ISBN: {isbn[indice]}")
-        if libros_disponibles[indice] < 1:
-            print(f"   No hay stock disponible.")
         else:
-            print(f"   Stock disponible: {libros_disponibles[indice]}")
-        print()
-        input("Presione Enter para volver al menú...")
-        menuNavegacion()
+            # Si lo encuentra, mostrar datos
+            print(f"\n   Título: {titulos_libros[indice]}")
+            print(f"   Autor: {autores_libros[indice]}")
+            print(f"   ISBN: {isbn[indice]}")
+            if libros_disponibles[indice] < 1:
+                print(f"   No hay stock disponible.")
+            else:
+                print(f"   Stock disponible: {libros_disponibles[indice]}")
+            print()
+            input("Presione Enter para volver al menú...")
+            menuNavegacion()
 
 
 # Función - Alquilar un libro disponible
@@ -253,7 +254,7 @@ def devolverLibro(titulos_libros, autores_libros, isbn, libros_disponibles, usua
         obtener_indice = encontrar_valor(obtener_indice_mediante_ISBN, isbn)
         titulo_libro = titulos_libros[obtener_indice]
         libros_disponibles[obtener_indice] += 1
-        prestamos_usuario.remove(obtener_indice_mediante_ISBN)
+        prestamos_usuario.pop(obtener_indice_mediante_ISBN)
         print(f"Has devuelto correctamente el libro {titulo_libro}.")
         
         input("Presione Enter para volver al menú...")
