@@ -1,13 +1,12 @@
 import random # Importamos la librería random para generar números aleatorios
 
 # Definimos las variables globales y utilizamos listas paralelas.
-nombres_usuarios = ["agustin", "victoria", "iara", "fionna", "mateo", "prueba"]
-contrasenia_usuarios = ["mayol", "martins", "godoy", "belloni", "bichutte", "prueba"]
-permisos_usuarios = [1,1,1,1,1,0]
-prestamos_activos_usuarios = [ [94], [3948], [], [], [], [] ]
-lugar_de_residencia_usuarios = ["almagro", "lanus", "flores", "almagro", "almagro", "lanus"]
+nombres_usuarios = ["agustin", "victoria", "iara", "prueba"]
+contrasenia_usuarios = ["mayol", "martins", "godoy", "prueba"]
+permisos_usuarios = [1,1,1,0]
+prestamos_activos_usuarios = [ [94], [3948], [], [] ]
+lugar_de_residencia_usuarios = ["almagro", "lanus", "flores", "almagro"]
 usuario_actual = []
-
 titulos_libros= ["Heartless","Cazadores de brujas","It","Wicked","Serpent"]
 autores_libros=["Marissa Meyer","Virginia Boecker", "Stephen King", "Gregory Maguire", "Sarah Fine"]
 isbn = [2833,7483, 9120, 94, 3948]
@@ -182,7 +181,7 @@ def alquilarLibro(titulos_libros, autores_libros, isbn, libros_disponibles, usua
     while menu_selected < -1 or menu_selected > maximo:
         print()
         print("Opción inválida. Por favor, elija una opción en el rango indicado.")
-        alquilarLibro(titulos_libros, autores_libros, isbn, libros_disponibles, usuario_actual)
+        menu_selected = int(input("   →  "))
 
     if menu_selected == -1:
         menuNavegacion()
@@ -244,7 +243,7 @@ def devolverLibro(titulos_libros, autores_libros, isbn, libros_disponibles, usua
     while menu_selected < -1 or menu_selected > maximo:
         print()
         print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
-        devolverLibro(titulos_libros, autores_libros, isbn, libros_disponibles, usuario_actual)
+        menu_selected = int(input("   →  "))
 
     if menu_selected == -1:
         menuNavegacion()
@@ -254,7 +253,7 @@ def devolverLibro(titulos_libros, autores_libros, isbn, libros_disponibles, usua
         obtener_indice = encontrar_valor(obtener_indice_mediante_ISBN, isbn)
         titulo_libro = titulos_libros[obtener_indice]
         libros_disponibles[obtener_indice] += 1
-        prestamos_usuario.pop(obtener_indice_mediante_ISBN)
+        prestamos_usuario.pop(obtener_indice_libro_devolver)
         print(f"Has devuelto correctamente el libro {titulo_libro}.")
         
         input("Presione Enter para volver al menú...")
@@ -287,15 +286,17 @@ def verMisPrestamosActivos(prestamos_activos_usuarios, isbn):
 
 # Función - Me siento con suerte
 def meSientoConSuerte(titulos_libros, autores_libros):
-    print("-----------------------------------------")
-    print("Bienvenido a me siento con suerte")
-    print("-----------------------------------------")
-    print("Se eligira un libro al azar y esa sera nuestra recomendacion para usted!")
-    indice_random = random.randint(1, len(titulos_libros))
+    indice_random = random.randint(0, len(titulos_libros) - 1)
     titulo_random = titulos_libros[indice_random]
     autor_random = autores_libros[indice_random]
-    print("El título que elegimos para usted fue:", titulo_random, "   -    de", autor_random)
-    print("Puedes encontrar este libro en la biblioteca! Acuerdate de verificar si hay stock disponible.")
+
+    print("-----------------------------------------")
+    print("Me siento con suerte")
+    print("-----------------------------------------")
+    print("Se eligirá un libro al azar y esa será nuestra recomendación para usted.")
+    print("El título que elegimos fue:", titulo_random, "   -    de", autor_random)
+    print("Puedes encontrar este libro en la biblioteca. Acuérdate de verificar si hay stock disponible.")
+    # Agregar funcionalidad de stock disponible
     print()
     input("Presione Enter para volver al menú...")
     menuNavegacion()
@@ -362,7 +363,7 @@ def modificarLibro(isbn, titulos_libros, autores_libros, libros_disponibles):
     if isbn_a_modificar == -1:
         menuNavegacion()
     else:
-         editando = True
+        editando = True
     while editando:
         indice_segun_isbn = encontrar_valor(isbn_a_modificar, isbn)
         #Obtener los datos ACTUALES del libro
@@ -571,7 +572,7 @@ def menuNavegacion():
     while (menu_selected < -2 or menu_selected >  11) or (usuario_actual[2] != 1 and menu_selected > 6):
         print()
         print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
-        menuNavegacion()
+        menu_selected = int(input("   →  "))
     
     print()
 

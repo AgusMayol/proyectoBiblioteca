@@ -6,5 +6,3 @@
  - Mayol Agustín
  - Iara Godoy
  - Victoria Martins
- - Fionna Belloni
- - Mateo Bichutte
