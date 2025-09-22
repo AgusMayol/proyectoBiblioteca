@@ -536,7 +536,6 @@ def modificarLibro(libros):
         
         if seguir_modificando == 2:
             editando = False
-            print(libros)
             menuNavegacion()
 
 
@@ -548,21 +547,24 @@ def eliminarLibro(libros):
     print("Ingrese el ISBN del libro que quiere eliminar (Ingrese -1 para volver al menu)")
     print()
     input_ISBN = int(input("   →  "))
-    libro = libros[input_ISBN]
 
-    while input_ISBN != -1 and not libro:
-        if not libro:
+    while input_ISBN != -1 and input_ISBN not in libros:
+        if input_ISBN not in libros:
             print("Error, el libro que quiere eliminar no existe.")
         print()
         print("Ingrese el ISBN del libro que quiere eliminar (Ingrese -1 para volver al menu)")
         input_ISBN = int(input("   →  "))
-        libro = libros[input_ISBN]
 
     if input_ISBN == -1:
         menuNavegacion()
     else:
-        titulo = libro["titulo"]
+        titulo = libros[input_ISBN]["titulo"]
         libros.pop(input_ISBN)
+
+        for usuario in usuarios:
+            if input_ISBN in usuarios[usuario]["prestamos"]:
+                usuarios[usuario]["prestamos"].remove(input_ISBN)
+
         print ("El libro", titulo,"fue eliminado correctamente.")
         print()
         input("Presione Enter para volver al menú...")
