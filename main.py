@@ -62,6 +62,9 @@ libros = {
 usuario_actual = []
 
 def Ordenar_mediante_stock(libros):
+    '''
+        Ordena los libros mediante el stock disponible, de mayor a menor.
+    '''
     # Convertir el diccionario a una lista de tuplas (isbn, datos_libro)
     libros_lista = list(libros.items())
     
@@ -71,15 +74,11 @@ def Ordenar_mediante_stock(libros):
     # Convertir de vuelta a diccionario
     return dict(libros_ordenados)
 
-# Función - Encontrar el valor en una lista (auxiliar)
-def encontrar_valor(valor, key, lista):
-    for llave in lista:
-        print(llave)
-        for usuario in lista[llave]:
-            print(usuario)
-
 # Función - Manejo lógico del inicio de sesión
 def login(usuario, contrasenia, usuarios, usuario_actual):
+    '''
+        Verifica si el usuario y contraseña son correctos, y si es así, agrega el usuario a la lista de usuarios actuales.
+    '''
     if usuario in usuarios:
         if usuarios[usuario]["contrasenia"] == contrasenia:
             usuario_actual.append(usuario)
@@ -95,6 +94,9 @@ def login(usuario, contrasenia, usuarios, usuario_actual):
 
 # Función - Inicio de sesión
 def showLogin(usuarios, usuario_actual):
+    '''
+        Muestra el inicio de sesión, y ejecuta la función que verifica si el usuario y contraseña son correctos.
+    '''
     print()
     print("-----------------------------------------")
     print(" ¡Bienvenido al sistema de Biblioteca!")
@@ -129,6 +131,9 @@ def showLogin(usuarios, usuario_actual):
 
 # Función - Ver todos los libros de la biblioteca (alquilados o no)
 def verTodosLosLibros(libros): #Muestra todos los libros de la biblioteca, disponibles o no.
+    '''
+        Muestra todos los libros de la biblioteca, disponibles o no, ordenados por stock disponible.
+    '''
     print("-----------------------------------------")
     print("Todos los libros de la biblioteca (Ordenados por stock disponible)")
     print("-----------------------------------------")
@@ -152,6 +157,9 @@ def verTodosLosLibros(libros): #Muestra todos los libros de la biblioteca, dispo
 
 # Función - Buscar libro por ISBN
 def buscarLibroPorISBN(libros):
+    '''
+        Busca un libro por ISBN, y muestra sus datos.
+    '''
     print("-----------------------------------------")
     print("Buscar libro por ISBN")
     print("-----------------------------------------")
@@ -179,6 +187,9 @@ def buscarLibroPorISBN(libros):
 
 # Función - Alquilar un libro disponible
 def alquilarLibro(libros, usuarios, usuario_actual):
+    '''
+        Muestra todos los libros disponibles, y permite alquilar uno.
+    '''
     print("-----------------------------------------")
     print("Libros disponibles")
     print("Ingrese el número del libro que quiere alquilar")
@@ -236,6 +247,9 @@ def alquilarLibro(libros, usuarios, usuario_actual):
 
 # Función - Devolver un libro alquilado
 def devolverLibro(libros, usuarios, usuario_actual):
+    '''
+        Muestra todos los libros alquilados por el usuario actual, y permite devolver uno.
+    '''
     print("-----------------------------------------")
     print("Devolver un libro alquilado")
     print("-----------------------------------------")
@@ -291,6 +305,9 @@ def devolverLibro(libros, usuarios, usuario_actual):
 
 # Función - Ver mis prestamos activos
 def verMisPrestamosActivos(libros, usuarios, usuario_actual):
+    '''
+        Muestra todos los libros alquilados por el usuario actual.
+    '''
     print("-----------------------------------------")
     print(f'Prestamos activos de {usuario_actual[0]}')
     print("-----------------------------------------")
@@ -311,6 +328,9 @@ def verMisPrestamosActivos(libros, usuarios, usuario_actual):
 
 # Función - Agregar libro (admin)
 def agregarLibro(libros):
+    '''
+        Función de administrador que permite agregar un libro a la biblioteca.
+    '''
     print("-----------------------------------------")
     print("Agregar un libro ")
     print("-----------------------------------------")
@@ -410,6 +430,9 @@ def agregarLibro(libros):
 
 # Función - Modificar libro (admin)
 def modificarLibro(libros):
+    '''
+        Función de administrador que permite modificar un libro de la biblioteca.
+    '''
     print("-----------------------------------------")
     print("Modificar libros")
     print("-----------------------------------------")
@@ -541,6 +564,9 @@ def modificarLibro(libros):
 
 # Función - Eliminar libro (admin)
 def eliminarLibro(libros):
+    '''
+        Función de administrador que permite eliminar un libro de la biblioteca.
+    '''
     print("-----------------------------------------")
     print("Eliminar un libro")
     print("-----------------------------------------")
@@ -573,6 +599,9 @@ def eliminarLibro(libros):
 
 # # Función - Prestamos activos de todos los usuarios (admin)
 def verTodosLosPrestamosActivos(usuarios, libros):
+    '''
+        Función de administrador que permite ver todos los prestamos activos de todos los usuarios.
+    '''
     print("-----------------------------------------")
     print("Prestamos activos de todos los usuarios")
     print("-----------------------------------------")
@@ -597,6 +626,9 @@ def verTodosLosPrestamosActivos(usuarios, libros):
 
 # # Función - Cerrar sesón
 def cerrarSesion(usuario_actual):
+    '''
+        Función que permite cerrar la sesión actual.
+    '''
     print("   Hasta pronto,", usuario_actual[0], "👋😢")
     print("   Cerrando sesión...")
     usuario_actual.clear()  # Vacía la lista de la sesión actual
@@ -605,12 +637,18 @@ def cerrarSesion(usuario_actual):
 
 # # Función - Salir del programa
 def salirDelPrograma(usuario_actual):
+    '''
+        Función que permite salir del programa.
+    '''
     print("   Hasta pronto,", usuario_actual[0], "👋😢")
     print("   Saliendo...")
 
 
 # # Función - Menú de navegación
 def menuNavegacion():
+    '''
+        Función que permite navegar por el programa.
+    '''
     print("-----------------------------------------")
     print("Menú de navegación")
     print("-----------------------------------------")
