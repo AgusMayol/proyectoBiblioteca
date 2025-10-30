@@ -1,67 +1,151 @@
-usuarios = {
-    "agustin": {
-        "nombre": "agustin",
-        "contrasenia": "mayol",
-        "prestamos": [94],
-        "administrador": True
-    },
-    "victoria": {
-        "nombre": "victoria",
-        "contrasenia": "martins",
-        "prestamos": [3948],
-        "administrador": True
-    },
-    "iara": {
-        "nombre": "iara",
-        "contrasenia": "godoy",
-        "prestamos": [],
-        "administrador": True
-    },
-    "prueba": {
-        "nombre": "prueba",
-        "contrasenia": "prueba",
-        "prestamos": [],
-        "administrador": False
-    },
+import json
+
+usuario_actual = {
+    "email": "",
+    "nombre": "",
+    "contrasenia": "",
+    "prestamos": [],
+    "administrador": False
+}
+
+def leer_usuarios():
+    usuarios = {}
+    try:
+        arch = open("users.json", "rt")
+        usuarios = json.load(arch)
+    except FileNotFoundError as mensaje:
+        print("No se puede abrir el archivo:", mensaje)
+    except OSError as mensaje:
+        print("No se puede leer el archivo:", mensaje)
+    finally:
+        try:
+            arch.close()
+        except NameError:
+            pass
+    return usuarios
+
+def guardar_usuarios(usuarios):
+    try:
+        arch = open("users.json", "wt")
+        json.dump(usuarios, arch)
+    except FileNotFoundError as mensaje:
+        print("No se puede abrir el archivo:", mensaje)
+    except OSError as mensaje:
+        print("No se puede escribir en el archivo:", mensaje)
+    finally:
+        try:
+            arch.close()
+        except NameError:
+            pass
+
+
+def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, total_libros=None):
+    """
+    Lee libros del archivo CSV con paginación y control de límite.
     
-}
+    Args:
+        filtro: Función de filtrado opcional
+        max_a_mostrar: Número máximo de libros a mostrar por página
+        pagina: Número de página actual
+        libros_mostrados: Contador de libros ya mostrados en páginas anteriores
+        total_libros: Total de libros que cumplen con el filtro (se calcula en la primera llamada)
+    """
+    
+    try:
+        arch = open("data.csv", "rt")
+        # Saltar la primera línea (encabezados)
+        arch.readline()
+        
+        # Calcular información de paginación
+        
+        # Detectar si es la última página
+        
+        # Calcular el rango de resultados para esta página
+        
+        print(f"\n--- PÁGINA {pagina} ---")
+        print(f"{'-' * 35}{'-' * 30}{'-' * 15}{'-' * 5}{'-' * 13}")
+        print(f"| {'TÍTULO':<35} | {'AUTOR':<30} | {'GÉNERO':<15} | {'STOCK':>5} |")
+        print(f"| {'-' * 35}{'-' * 3}{'-' * 30}{'-' * 3}{'-' * 15}{'-' * 3}{'-' * 5} |")
+        
+        libros_en_pagina = 0
+        libros_omitidos = 0
+        
+        while True:
+            linea = arch.readline()
+            if not linea:  # Fin del archivo
+                break
+                
+            libro_id, titulo, autor, genero, fecha_publicacion, editorial, stock = linea.split(';')
+            stock = stock.rstrip("\n")
 
-libros = {
-    2833: {
-        "ISBN": 2833,
-        "titulo": "Heartless",
-        "autor": "Marissa Meyer",
-        "stock": 5
-    },
-    7483: {
-        "ISBN": 7483,
-        "titulo": "Cazadores de brujas",
-        "autor": "Virginia Voecker",
-        "stock": 4
-    },
-    9120: {
-        "ISBN": 9120,
-        "titulo": "It",
-        "autor": "Sthephen King",
-        "stock": 1
-    },
-    94: {
-        "ISBN": 94,
-        "titulo": "Wicked",
-        "autor": "Gregory Maguire",
-        "stock": 0,
-    },
-    3948: {
-        "ISBN": 3948,
-        "titulo": "Serpent",
-        "autor": "Sarah Fine",
-        "stock": 0
-    },
-}
+            libro = {
+                "titulo": titulo,
+                "autor": autor,
+                "genero": genero,
+                "stock": stock
+            }
 
-usuario_actual = []
+            # Aplicar filtro si existe
+            if filtro is not None and not filtro(libro):
+                continue
+            
+            # Omitir libros ya mostrados en páginas anteriores
+            if libros_omitidos < libros_mostrados:
+                libros_omitidos += 1
+                continue
+            
+            # Mostrar libro si no hemos alcanzado el límite de la página
+            if libros_en_pagina < max_a_mostrar:
+                print(f"| {titulo:<35} | {autor:<30} | {genero:<15} | {stock:>5} |")
+                libros_en_pagina += 1
+            else:
+                # Si hemos alcanzado el límite de la página, salir del bucle
+                break
+                
+        print(f"{'-' * 35}{'-' * 30}{'-' * 15}{'-' * 5}{'-' * 13}")
+        
+        # Si no se mostraron libros en esta página, no hay más páginas
+        if libros_en_pagina == 0:
+            print("No hay más libros para mostrar.")
+            return
 
-def Ordenar_mediante_stock(libros):
+        # Preguntar por la siguiente página solo si la próxima página no estaría vacía
+        if libros_en_pagina == max_a_mostrar:  # Si se mostraron todos los libros posibles, puede haber más
+            print("Desea ver la siguiente página?")
+            print("   1) Si")
+            print("   2) No")
+            print()
+            menu_selected = int(input("   →  "))
+            while menu_selected < 1 or menu_selected > 2:
+                print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
+                menu_selected = int(input("   →  "))
+        
+            if menu_selected == 1:
+                # Calcular cuántos libros se han mostrado hasta ahora
+                total_libros_mostrados = libros_mostrados + libros_en_pagina
+                leer_libros(filtro=filtro, max_a_mostrar=max_a_mostrar, pagina=pagina + 1, libros_mostrados=total_libros_mostrados, total_libros=total_libros)
+            else:
+                return
+        else:
+            # Si no se mostraron todos los libros posibles, es la última página
+            print("Has llegado al final de los resultados.")
+            return
+            
+    except FileNotFoundError as mensaje:
+        print("No se puede abrir el archivo:", mensaje)
+    except OSError as mensaje:
+        print("No se puede leer el archivo:", mensaje)
+    finally:
+        try:
+            arch.close()
+        except NameError:
+            pass
+
+#leer_libros(lambda libro: libro["genero"].lower() == "horror", max_a_mostrar=1000, pagina=1)
+
+
+
+def ordenar_mediante_stock(libros):
     '''
         Ordena los libros mediante el stock disponible, de mayor a menor.
     '''
@@ -74,23 +158,68 @@ def Ordenar_mediante_stock(libros):
     # Convertir de vuelta a diccionario
     return dict(libros_ordenados)
 
+
+def paginar_libros(libros, max_filas):
+        # Esta función recibe un diccionario de libros y un maximo de filas
+        # y devuelve una matriz de libros paginados, agrupados por filas y columnas.
+        # La cantidad de libros en una columna no debe exceder el máximo de filas
+        # Las columnas deben estar ordenadas por stock disponible, de mayor a menor
+        # La matriz debe ser devuelta en forma de lista de listas. Siendo el primer elemento de la lista el indice de la pagina (columnas: 1, 2 ,3, ...), y el segundo elemento la lista de libros de la pagina (filas: datos del libro).
+        # El proceso debería ser el siguiente:
+        # 1. Ordenar los libros por stock disponible, de mayor a menor.
+        # 2. Agrupar los libros en columnas, hasta que se llene el maximo de filas.
+
+    # 1. Ordenar los libros por stock disponible, de mayor a menor.
+    libros_ordenados = ordenar_mediante_stock(libros)
+
+    # 2. Agrupar los libros en columnas, hasta que se llene el maximo de filas.
+    matriz = [
+        [
+            0
+        ], # Columnas
+        [
+            []
+        ] # Filas
+    ]
+
+    columna_actual = 0
+
+    for i in libros_ordenados:
+        #print(i)
+        if len(matriz[1][columna_actual]) != max_filas:
+            matriz[1][columna_actual].append(i)
+        else:
+            columna_actual = columna_actual + 1
+            matriz[1].append([])
+            matriz[1][columna_actual].append(i)
+            matriz[0].append(columna_actual)
+
+    return matriz
+
+def mostrar_segun_paginacion(libros):
+    libros = paginar_libros(libros, 3)
+
+#mostrar_segun_paginacion(leer_libros())
+
 # Función - Manejo lógico del inicio de sesión
-def login(usuario, contrasenia, usuarios, usuario_actual):
+def login(email, contrasenia, usuarios, usuario_actual):
     '''
-        Verifica si el usuario y contraseña son correctos, y si es así, agrega el usuario a la lista de usuarios actuales.
+        Verifica si el email y contraseña son correctos, y si es así, agrega el usuario a la lista de usuarios actuales.
     '''
-    if usuario in usuarios:
-        if usuarios[usuario]["contrasenia"] == contrasenia:
-            usuario_actual.append(usuario)
-            usuario_actual.append(usuarios[usuario]["contrasenia"])
-            usuario_actual.append(usuarios[usuario]["prestamos"])
-            usuario_actual.append(usuarios[usuario]["administrador"])
+
+
+    if email in usuarios:
+        if usuarios[email]["contrasenia"] == contrasenia:
+            usuario_actual["email"] = email
+            usuario_actual["nombre"] = usuarios[email]["nombre"]
+            usuario_actual["contrasenia"] = usuarios[email]["contrasenia"]
+            usuario_actual["prestamos"] = usuarios[email]["prestamos"]
+            usuario_actual["administrador"] = usuarios[email]["administrador"]
             return True
-        else: #Si el usuario o contraseña no existen, o existen pero no coinciden en posicion
+        else: #Si el email o contraseña no existen, o existen pero no coinciden en posicion
             return False
     else: 
         return False
-
 
 # Función - Inicio de sesión
 def showLogin(usuarios, usuario_actual):
@@ -99,35 +228,159 @@ def showLogin(usuarios, usuario_actual):
     '''
     print()
     print("-----------------------------------------")
-    print(" ¡Bienvenido al sistema de Biblioteca!")
-    print("-----------------------------------------")
-    print()
-    print("-----------------------------------------")
     print("Por favor, ingrese sus credenciales.")
     print("-----------------------------------------")
-    usuario = ""
+    email = ""
     contrasenia = ""
     verificado = False
     while not verificado:
 
-        usuario = input("   Nombre de usuario: ")
-        while not usuario: #El campo no puede estar vacío
-            usuario = input("   Error. Ingrese un usuario valido: ")
+        email = input("   Correo electrónico: ")
+        while not email: #El campo no puede estar vacío
+            email = input("   Error. Ingrese un correo valido: ")
 
         contrasenia = input("   Contraseña: ")
         while not contrasenia: #El campo no puede estar vacío
             contrasenia = input("   Error. Ingrese una contraseña valida: ")
 
-        verificado = login(usuario, contrasenia, usuarios, usuario_actual)
+        verificado = login(email, contrasenia, usuarios, usuario_actual)
         if(not verificado):
-            print("   Usuario o contraseña incorrectos. Por favor, intente nuevamente.")
+            print("   Correo o contraseña incorrectos. Por favor, intente nuevamente.")
             print()
             
     print()
-    print("   Hola de nuevo,", usuario, "👋")
+    print("   Hola de nuevo,", usuario_actual["nombre"], "👋")
     print()
 
     menuNavegacion()
+
+
+# Función - Registrarse
+def showRegister(usuarios, usuario_actual):
+    '''
+        Muestra el inicio de sesión, y ejecuta la función que verifica si el usuario y contraseña son correctos.
+    '''
+    print()
+    print("-----------------------------------------")
+    print("Por favor, ingrese sus datos de registro.")
+    print("-----------------------------------------")
+    nombre = ""
+    email = ""
+    contrasenia = ""
+    respuesta_seguridad = ""
+    
+
+    nombre = input("   Nombre: ")
+    while not nombre: #El campo no puede estar vacío
+        nombre = input("   Error. Ingrese un nombre valido: ")
+
+    email = input("   Correo electrónico: ")
+    while not email: #El campo no puede estar vacío
+        email = input("   Error. Ingrese un correo valido: ")
+
+    contrasenia = input("   Contraseña: ")
+    while not contrasenia: #El campo no puede estar vacío
+        contrasenia = input("   Error. Ingrese una contraseña valida: ")
+
+    respuesta_seguridad = input("   Pregunta de seguridad: ¿Cuál es el primer colegio al que asististe? ")
+    while not respuesta_seguridad: #El campo no puede estar vacío
+        respuesta_seguridad = input("   Error. Ingrese una respuesta de seguridad valida: ")
+
+    if email in usuarios:
+        print("   El correo electrónico ya está registrado. Por favor, ingrese uno diferente.")
+        print()
+        showWelcome(usuarios, usuario_actual)
+    else:
+        usuarios[email] = {
+            "nombre": nombre,
+            "contrasenia": contrasenia,
+            "prestamos": [],
+            "administrador": False,
+            "respuesta_seguridad": respuesta_seguridad
+        }
+
+        # Agregar al json de usuarios
+        guardar_usuarios(usuarios)
+            
+    print()
+    print("   Registro exitoso, por favor, inicie sesión para continuar.")
+    print()
+
+    showLogin(usuarios, usuario_actual)
+
+
+def recoverPassword(usuarios, usuario_actual):
+    '''
+        Recupera la contraseña de un usuario, y muestra el mensaje de recuperación de contraseña.
+    '''
+    print()
+    print("-----------------------------------------")
+    print("Por favor, ingrese sus datos de recuperación de contraseña.")
+    print("-----------------------------------------")
+    email = ""
+    contrasenia = ""
+    respuesta_seguridad = ""
+
+    email = input("   Correo electrónico: ")
+    while not email: #El campo no puede estar vacío
+        email = input("   Error. Ingrese un correo valido: ")
+
+    respuesta_seguridad = input("   Pregunta de seguridad: ¿Cuál es el primer colegio al que asististe? ")
+    while not respuesta_seguridad: #El campo no puede estar vacío
+        respuesta_seguridad = input("   Error. Ingrese una respuesta de seguridad valida: ")
+
+    contrasenia = input("   Nueva contraseña: ")
+    while not contrasenia: #El campo no puede estar vacío
+        contrasenia = input("   Error. Ingrese una contraseña valida: ")
+
+
+    if usuarios[email]["respuesta_seguridad"] != respuesta_seguridad:
+        print("   La respuesta de seguridad no es correcta. Por favor, intente nuevamente.")
+        print()
+        showWelcome(usuarios, usuario_actual)
+    else:
+        usuarios[email] = {
+            "nombre": usuarios[email]["nombre"],
+            "contrasenia": contrasenia,
+            "prestamos": usuarios[email]["prestamos"],
+            "administrador": usuarios[email]["administrador"],
+            "respuesta_seguridad": usuarios[email]["respuesta_seguridad"]
+        }
+
+        # Agregar al json de usuarios
+        guardar_usuarios(usuarios)
+            
+    print()
+    print("   Contraseña recuperada exitosamente, por favor, inicie sesión para continuar.")
+    print()
+
+    showLogin(usuarios, usuario_actual)
+
+def showWelcome(usuario_actual):
+    print()
+    print("-----------------------------------------")
+    print(" ¡Bienvenido al sistema de Biblioteca!")
+    print("-----------------------------------------")
+    print()
+    print("   1) Iniciar sesión")
+    print("   2) Registrarse")
+    print("   3) Recuperar contraseña")
+    print()
+    menu_selected = int(input("   →  "))
+
+    while (menu_selected < 1 or menu_selected >  3):
+        print()
+        print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
+        menu_selected = int(input("   →  "))
+
+        print()
+
+    if menu_selected == 1:
+        showLogin(leer_usuarios(), usuario_actual)
+    elif menu_selected == 2:
+        showRegister(leer_usuarios(), usuario_actual)
+    elif menu_selected == 3:
+        recoverPassword(leer_usuarios(), usuario_actual)
 
 # Función - Ver todos los libros de la biblioteca (alquilados o no)
 def verTodosLosLibros(libros): #Muestra todos los libros de la biblioteca, disponibles o no.
@@ -138,7 +391,7 @@ def verTodosLosLibros(libros): #Muestra todos los libros de la biblioteca, dispo
     print("Todos los libros de la biblioteca (Ordenados por stock disponible)")
     print("-----------------------------------------")
 
-    libros_ordenados = Ordenar_mediante_stock(libros)
+    libros_ordenados = ordenar_mediante_stock(libros)
 
     for libro in libros_ordenados:
         print(f'   {libros_ordenados[libro]["titulo"]}')
@@ -196,7 +449,7 @@ def alquilarLibro(libros, usuarios, usuario_actual):
     print("-----------------------------------------")
     contador_libros_disponibles = 0
 
-    libros_ordenados = Ordenar_mediante_stock(libros)
+    libros_ordenados = ordenar_mediante_stock(libros)
     diccionario_asociativo = {
         # codigo: {
             #"isbn": 0000,
@@ -238,9 +491,9 @@ def alquilarLibro(libros, usuarios, usuario_actual):
         libro_seleccionado = diccionario_asociativo[menu_selected]["ISBN"]
 
         libros[libro_seleccionado]["stock"] -= 1
-        usuarios[usuario_actual[0]]["prestamos"].append(libro_seleccionado)
+        usuarios[usuario_actual["email"]]["prestamos"].append(libro_seleccionado)
         print()
-        print(f'{usuario_actual[0]}, alquilaste correctamente el libro {libros[libro_seleccionado]["titulo"]}!')
+        print(f'{usuario_actual["nombre"]}, alquilaste correctamente el libro {libros[libro_seleccionado]["titulo"]}!')
         input("Presione Enter para volver al menú...")
         menuNavegacion()
 
@@ -254,7 +507,7 @@ def devolverLibro(libros, usuarios, usuario_actual):
     print("Devolver un libro alquilado")
     print("-----------------------------------------")
     contador_libros_alquilados = 0
-    prestamos_usuario = usuarios[usuario_actual[0]]["prestamos"]
+    prestamos_usuario = usuarios[usuario_actual["email"]]["prestamos"]
 
     if not prestamos_usuario:
         print("No hay préstamos activos para devolver.")
@@ -293,10 +546,10 @@ def devolverLibro(libros, usuarios, usuario_actual):
     elif menu_selected != -1 and menu_selected <= len(diccionario_asociativo):
         
         libro_seleccionado = diccionario_asociativo[menu_selected]["ISBN"]
-        indice = usuarios[usuario_actual[0]]["prestamos"].index(libro_seleccionado)
+        indice = usuarios[usuario_actual["email"]]["prestamos"].index(libro_seleccionado)
 
         libros[libro_seleccionado]["stock"] += 1
-        usuarios[usuario_actual[0]]["prestamos"].pop(indice)
+        usuarios[usuario_actual["email"]]["prestamos"].pop(indice)
         print(f'Has devuelto correctamente el libro {libros[libro_seleccionado]["titulo"]}.')
         
         input("Presione Enter para volver al menú...")
@@ -309,13 +562,13 @@ def verMisPrestamosActivos(libros, usuarios, usuario_actual):
         Muestra todos los libros alquilados por el usuario actual.
     '''
     print("-----------------------------------------")
-    print(f'Prestamos activos de {usuario_actual[0]}')
+    print(f'Prestamos activos de {usuario_actual[1]}')
     print("-----------------------------------------")
 
-    for ISBN in usuarios[usuario_actual[0]]["prestamos"]: #Listado de libros alquilados por el usuario actual
+    for ISBN in usuarios[usuario_actual["email"]]["prestamos"]: #Listado de libros alquilados por el usuario actual
         print(f'   {libros[ISBN]["titulo"]}') # imprime el título de cada libro
 
-    if not usuarios[usuario_actual[0]]["prestamos"]:
+    if not usuarios[usuario_actual["email"]]["prestamos"]:
         print()
         print("No hay prestamos activos.")
         print()
@@ -629,7 +882,7 @@ def cerrarSesion(usuario_actual):
     '''
         Función que permite cerrar la sesión actual.
     '''
-    print("   Hasta pronto,", usuario_actual[0], "👋😢")
+    print("   Hasta pronto,", usuario_actual["nombre"], "👋😢")
     print("   Cerrando sesión...")
     usuario_actual.clear()  # Vacía la lista de la sesión actual
     showLogin(usuarios, usuario_actual)
@@ -640,7 +893,7 @@ def salirDelPrograma(usuario_actual):
     '''
         Función que permite salir del programa.
     '''
-    print("   Hasta pronto,", usuario_actual[0], "👋😢")
+    print("   Hasta pronto,", usuario_actual["nombre"], "👋😢")
     print("   Saliendo...")
 
 
@@ -657,7 +910,7 @@ def menuNavegacion():
     print("   3) Alquilar un libro disponible")
     print("   4) Devolver un libro alquilado")
     print("   5) Ver tus préstamos activos")
-    if usuario_actual[3]:
+    if usuario_actual["administrador"]:
         print("   6) Añadir un libro a la biblioteca")
         print("   7) Modificar un libro")
         print("   8) Eliminar un libro de la biblioteca")
@@ -670,7 +923,7 @@ def menuNavegacion():
 
     menu_selected = int(input("   →  "))
 
-    while (menu_selected < -2 or menu_selected >  9) or (not usuario_actual[3] and menu_selected > 5):
+    while (menu_selected < -2 or menu_selected >  9) or (not usuario_actual["administrador"] and menu_selected > 5):
         print()
         print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
         menu_selected = int(input("   →  "))
@@ -701,4 +954,4 @@ def menuNavegacion():
         salirDelPrograma(usuario_actual)
 
 # Ejecutar la función de inicio de sesión
-showLogin(usuarios, usuario_actual)
+showWelcome(usuario_actual)
