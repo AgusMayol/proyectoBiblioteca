@@ -1,12 +1,88 @@
 import json
+from datetime import date
 
 usuario_actual = {
     "email": "",
     "nombre": "",
     "contrasenia": "",
-    "prestamos": [],
+    "prestamos": {},
     "administrador": False
 }
+
+# Función - Verificar si un año es bisiesto
+def es_anio_bisiesto(anio):
+    """
+    Determina si un año es bisiesto.
+    
+    Un año es bisiesto si:
+    - Es divisible por 4 Y
+    - No es divisible por 100, O es divisible por 400
+    
+    Args:
+        anio: El año a verificar (int)
+    
+    Returns:
+        True si es bisiesto, False si no lo es
+    """
+    return (anio % 4 == 0 and anio % 100 != 0) or (anio % 400 == 0)
+
+# Función - Obtener días en un mes
+def obtener_dias_del_mes(mes, anio):
+    """
+    Devuelve la cantidad de días de un mes específico.
+    
+    Args:
+        mes: Número del mes (1-12)
+        anio: El año (necesario para febrero en años bisiestos)
+    
+    Returns:
+        Número de días del mes (int)
+    """
+    # Días por mes (índice 0 no se usa, índices 1-12 corresponden a enero-diciembre)
+    dias_por_mes = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    
+    # Si es febrero y el año es bisiesto, tiene 29 días
+    if mes == 2 and es_anio_bisiesto(anio):
+        return 29
+    
+    return dias_por_mes[mes]
+
+# Función - Añadir días a una fecha
+def agregar_dias_a_fecha(dia, mes, anio, dias_a_agregar):
+    """
+    Añade una cantidad específica de días a una fecha.
+    
+    Considera correctamente:
+    - Los días de cada mes
+    - El cambio de mes
+    - El cambio de año
+    - Los años bisiestos
+    
+    Args:
+        dia: Día inicial (1-31)
+        mes: Mes inicial (1-12)
+        anio: Año inicial
+        dias_a_agregar: Cantidad de días a sumar
+    
+    Returns:
+        Tupla (dia, mes, anio) con la nueva fecha
+    """
+    # Sumar los días al día actual
+    dia += dias_a_agregar
+    
+    # Ajustar si los días exceden el mes actual
+    while dia > obtener_dias_del_mes(mes, anio):
+        # Restar los días del mes actual
+        dia -= obtener_dias_del_mes(mes, anio)
+        # Avanzar al siguiente mes
+        mes += 1
+        
+        # Si pasamos de diciembre, avanzar al siguiente año
+        if mes > 12:
+            mes = 1
+            anio += 1
+    
+    return (dia, mes, anio)
 
 def leer_usuarios():
     usuarios = {}
@@ -39,7 +115,7 @@ def guardar_usuarios(usuarios):
             pass
 
 
-def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, total_libros=None):
+def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, total_libros=None, contador_inicio=1):
     """
     Lee libros del archivo CSV con paginación y control de límite.
     
@@ -49,6 +125,7 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
         pagina: Número de página actual
         libros_mostrados: Contador de libros ya mostrados en páginas anteriores
         total_libros: Total de libros que cumplen con el filtro (se calcula en la primera llamada)
+        contador_inicio: Número inicial del contador para esta página
     """
     
     try:
@@ -63,12 +140,13 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
         # Calcular el rango de resultados para esta página
         
         print(f"\n--- PÁGINA {pagina} ---")
-        print(f"{'-' * 35}{'-' * 30}{'-' * 15}{'-' * 5}{'-' * 13}")
-        print(f"| {'TÍTULO':<35} | {'AUTOR':<30} | {'GÉNERO':<15} | {'STOCK':>5} |")
-        print(f"| {'-' * 35}{'-' * 3}{'-' * 30}{'-' * 3}{'-' * 15}{'-' * 3}{'-' * 5} |")
+        print(f"{'-' * 6}{'-' * 35}{'-' * 30}{'-' * 15}{'-' * 5}{'-' * 13}")
+        print(f"|  N°  | {'TÍTULO':<35} | {'AUTOR':<30} | {'GÉNERO':<15} | {'STOCK':>5} |")
+        print(f"|{'-' * 6}| {'-' * 35}{'-' * 3}{'-' * 30}{'-' * 3}{'-' * 15}{'-' * 3}{'-' * 5} |")
         
         libros_en_pagina = 0
         libros_omitidos = 0
+        contador_actual = contador_inicio
         
         while True:
             linea = arch.readline()
@@ -79,6 +157,7 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
             stock = stock.rstrip("\n")
 
             libro = {
+                "libro_id": libro_id,
                 "titulo": titulo,
                 "autor": autor,
                 "genero": genero,
@@ -96,13 +175,14 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
             
             # Mostrar libro si no hemos alcanzado el límite de la página
             if libros_en_pagina < max_a_mostrar:
-                print(f"| {titulo:<35} | {autor:<30} | {genero:<15} | {stock:>5} |")
+                print(f"| {contador_actual:>3} | {titulo:<35} | {autor:<30} | {genero:<15} | {stock:>5} |")
                 libros_en_pagina += 1
+                contador_actual += 1
             else:
                 # Si hemos alcanzado el límite de la página, salir del bucle
                 break
                 
-        print(f"{'-' * 35}{'-' * 30}{'-' * 15}{'-' * 5}{'-' * 13}")
+        print(f"{'-' * 6}{'-' * 35}{'-' * 30}{'-' * 15}{'-' * 5}{'-' * 13}")
         
         # Si no se mostraron libros en esta página, no hay más páginas
         if libros_en_pagina == 0:
@@ -123,7 +203,9 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
             if menu_selected == 1:
                 # Calcular cuántos libros se han mostrado hasta ahora
                 total_libros_mostrados = libros_mostrados + libros_en_pagina
-                leer_libros(filtro=filtro, max_a_mostrar=max_a_mostrar, pagina=pagina + 1, libros_mostrados=total_libros_mostrados, total_libros=total_libros)
+                # Calcular el nuevo contador para la siguiente página
+                nuevo_contador = contador_inicio + libros_en_pagina
+                leer_libros(filtro=filtro, max_a_mostrar=max_a_mostrar, pagina=pagina + 1, libros_mostrados=total_libros_mostrados, total_libros=total_libros, contador_inicio=nuevo_contador)
             else:
                 return
         else:
@@ -141,7 +223,230 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
         except NameError:
             pass
 
-#leer_libros(lambda libro: libro["genero"].lower() == "horror", max_a_mostrar=1000, pagina=1)
+
+def buscar_libros_por_ids(prestamos_dict):
+    """
+    Busca y muestra libros específicos del archivo CSV por coincidencia exacta de libro_id.
+    
+    Args:
+        prestamos_dict: Diccionario de préstamos con formato {prestamo_id: {"libro_id": xxx, "cantidad": yyy, "fecha_alquiler": "YYYY-MM-DD"}}
+    
+    Returns:
+        Lista de diccionarios con los datos de los libros encontrados y sus prestamo_ids
+    """
+    
+    libros_encontrados = []
+    
+    try:
+        arch = open("data.csv", "rt")
+        # Saltar la primera línea (encabezados)
+        arch.readline()
+        
+        # Crear un diccionario temporal que mapea libro_id a lista de préstamos
+        libros_a_buscar = {}
+        for prestamo_id, prestamo_data in prestamos_dict.items():
+            libro_id = prestamo_data["libro_id"]
+            if libro_id not in libros_a_buscar:
+                libros_a_buscar[libro_id] = []
+            libros_a_buscar[libro_id].append({
+                "prestamo_id": prestamo_id,
+                "cantidad": prestamo_data["cantidad"],
+                "fecha_alquiler": prestamo_data["fecha_alquiler"],
+                "fecha_vencimiento": prestamo_data["fecha_vencimiento"]
+            })
+        
+        while True:
+            linea = arch.readline()
+            if not linea:  # Fin del archivo
+                break
+                
+            libro_id, titulo, autor, genero, fecha_publicacion, editorial, stock = linea.split(';')
+            stock = stock.rstrip("\n")
+
+            # Verificar si el libro_id está en el diccionario de préstamos
+            if libro_id in libros_a_buscar:
+                # Agregar un registro por cada préstamo de este libro
+                for prestamo in libros_a_buscar[libro_id]:
+                    libro = {
+                        "prestamo_id": prestamo["prestamo_id"],
+                        "libro_id": libro_id,
+                        "titulo": titulo,
+                        "autor": autor,
+                        "genero": genero,
+                        "cantidad": prestamo["cantidad"],
+                        "fecha_alquiler": prestamo["fecha_alquiler"],
+                        "fecha_vencimiento": prestamo["fecha_vencimiento"]
+                    }
+                    libros_encontrados.append(libro)
+        
+        arch.close()
+        
+        # Mostrar los libros encontrados en una tabla
+        if libros_encontrados:
+            print(f"\n--- LIBROS ENCONTRADOS ({len(libros_encontrados)}) ---")
+            print(f"{'-' * 6}{'-' * 35}{'-' * 30}{'-' * 15}{'-' * 10}{'-' * 17}{'-' * 17}")
+            print(f"|  N°  | {'TÍTULO':<33} | {'AUTOR':<28} | {'GÉNERO':<13} | {'CANTIDAD':<8} | {'FECHA ALQUILER':<15} | {'FECHA VENCIMIENTO':<15} |")
+            print(f"|{'-' * 6}|{'-' * 35}|{'-' * 30}|{'-' * 15}|{'-' * 10}|{'-' * 17}|{'-' * 17}|")
+            
+            contador = 1
+            for libro in libros_encontrados:
+                print(f"| {contador:>3} | {libro['titulo']:<33} | {libro['autor']:<28} | {libro['genero']:<13} | {libro['cantidad']:>8} | {libro['fecha_alquiler']:<15} | {libro['fecha_vencimiento']:<15} |")
+                contador += 1
+            
+            print(f"{'-' * 6}{'-' * 35}{'-' * 30}{'-' * 15}{'-' * 10}{'-' * 17}{'-' * 17}")
+        else:
+            print("\nNo se encontraron libros con los IDs proporcionados.")
+        
+        return libros_encontrados
+            
+    except FileNotFoundError as mensaje:
+        print("No se puede abrir el archivo:", mensaje)
+        return []
+    except OSError as mensaje:
+        print("No se puede leer el archivo:", mensaje)
+        return []
+    finally:
+        try:
+            arch.close()
+        except:
+            pass
+
+
+def leer_libros_alquilar(filtro=None, contador_inicio=1, numero_libro_alquilar=0, operacion="alquilar", cantidad=1):
+    """
+    Busca y devuelve un libro específico del archivo CSV aplicando un filtro.
+    
+    Args:
+        filtro: Función de filtrado opcional
+        max_a_mostrar: Número máximo de libros a mostrar por página (no usado, mantiene compatibilidad)
+        pagina: Número de página actual (no usado, mantiene compatibilidad)
+        libros_mostrados: Contador de libros ya mostrados en páginas anteriores (no usado, mantiene compatibilidad)
+        total_libros: Total de libros que cumplen con el filtro (no usado, mantiene compatibilidad)
+        contador_inicio: Número inicial del contador para esta página
+        numero_libro_alquilar: Número del libro a buscar (columna N°)
+        cantidad: Cantidad de copias a alquilar o devolver
+    
+    Returns:
+        Diccionario con los datos del libro si se encuentra, None si no se encuentra
+    """
+    
+    try:
+        arch = open("data.csv", "rt")
+        # Saltar la primera línea (encabezados)
+        arch.readline()
+        
+        contador_actual = contador_inicio
+        
+        while True:
+            linea = arch.readline()
+            if not linea:  # Fin del archivo
+                break
+                
+            libro_id, titulo, autor, genero, fecha_publicacion, editorial, stock = linea.split(';')
+            stock = stock.rstrip("\n")
+
+            if operacion == "alquilar":
+                stock = int(stock) - cantidad
+            elif operacion == "devolver":
+                stock = int(stock) + cantidad
+
+            libro = {
+                "libro_id": libro_id,
+                "titulo": titulo,
+                "autor": autor,
+                "genero": genero,
+                "fecha_publicacion": fecha_publicacion,
+                "editorial": editorial,
+                "stock": stock
+            }
+
+            # Aplicar filtro si existe
+            if filtro is not None and not filtro(libro):
+                continue
+            
+            # Verificar si este es el libro buscado
+            if contador_actual == numero_libro_alquilar:
+                # Cerrar archivo antes de devolver
+                arch.close()
+                # Devolver el libro completo con todos sus datos
+
+                guardar_libros(libro)
+
+                return libro
+            
+            contador_actual += 1
+        
+        # Si llegamos aquí, no se encontró el libro
+        arch.close()
+        return None
+            
+    except FileNotFoundError as mensaje:
+        print("No se puede abrir el archivo:", mensaje)
+        return None
+    except OSError as mensaje:
+        print("No se puede leer el archivo:", mensaje)
+        return None
+    finally:
+        try:
+            arch.close()
+        except:
+            pass
+
+
+def guardar_libros(libro):
+    """
+    Guarda o actualiza un libro en el archivo CSV.
+    
+    Args:
+        libro: String con formato CSV (ID;titulo;autor;genero;fecha_publicacion;editorial;stock)
+        o diccionario con las claves correspondientes
+    """
+    try:
+        # Si libro es un diccionario, convertirlo a string CSV
+        if type(libro) == dict:
+            libro_str = f"{libro['libro_id']};{libro['titulo']};{libro['autor']};{libro['genero']};{libro['fecha_publicacion']};{libro['editorial']};{libro['stock']}"
+        else:
+            libro_str = libro
+        
+        # Extraer el ID del libro (primera columna)
+        libro_id = libro_str.split(';')[0]
+        
+        # Leer todas las líneas del archivo
+        arch = open("data.csv", "rt")
+        lineas = arch.readlines()
+        arch.close()
+        
+        # Buscar si el libro ya existe
+        libro_existe = False
+        for i in range(1, len(lineas)):  # Empezar desde 1 para saltar el encabezado
+            id_actual = lineas[i].split(';')[0]
+            if id_actual == libro_id:
+                # Si existe, actualizar la línea
+                lineas[i] = libro_str if libro_str.endswith('\n') else libro_str + '\n'
+                libro_existe = True
+                break
+        
+        # Si no existe, agregar al final
+        if not libro_existe:
+            nueva_linea = libro_str if libro_str.endswith('\n') else libro_str + '\n'
+            lineas.append(nueva_linea)
+        
+        # Escribir todo de vuelta al archivo
+        arch = open("data.csv", "wt")
+        arch.writelines(lineas)
+        arch.close()
+        
+    except FileNotFoundError as mensaje:
+        print("No se puede abrir el archivo:", mensaje)
+    except OSError as mensaje:
+        print("No se puede leer/escribir en el archivo:", mensaje)
+    except Exception as mensaje:
+        print("Error al procesar el libro:", mensaje)
+    finally:
+        try:
+            arch.close()
+        except:
+            pass
 
 
 
@@ -383,7 +688,7 @@ def showWelcome(usuario_actual):
         recoverPassword(leer_usuarios(), usuario_actual)
 
 # Función - Ver todos los libros de la biblioteca (alquilados o no)
-def verTodosLosLibros(libros): #Muestra todos los libros de la biblioteca, disponibles o no.
+def verTodosLosLibros(): #Muestra todos los libros de la biblioteca, disponibles o no.
     '''
         Muestra todos los libros de la biblioteca, disponibles o no, ordenados por stock disponible.
     '''
@@ -391,17 +696,7 @@ def verTodosLosLibros(libros): #Muestra todos los libros de la biblioteca, dispo
     print("Todos los libros de la biblioteca (Ordenados por stock disponible)")
     print("-----------------------------------------")
 
-    libros_ordenados = ordenar_mediante_stock(libros)
-
-    for libro in libros_ordenados:
-        print(f'   {libros_ordenados[libro]["titulo"]}')
-        print(f'      - Autor: {libros_ordenados[libro]["autor"]}') 
-        print(f'      - ISBN: {libros_ordenados[libro]["ISBN"]}')
-        if libros_ordenados[libro]["stock"] < 1:
-            print(f'      - No hay stock disponible.')
-        else:
-            print(f'      - Stock disponible: {libros_ordenados[libro]["stock"]}')
-        print()
+    leer_libros(max_a_mostrar=1000, pagina=1)
 
     print()
     input("Presione Enter para volver al menú...")
@@ -409,37 +704,60 @@ def verTodosLosLibros(libros): #Muestra todos los libros de la biblioteca, dispo
 
 
 # Función - Buscar libro por ISBN
-def buscarLibroPorISBN(libros):
+def buscarLibroPorISBN():
     '''
-        Busca un libro por ISBN, y muestra sus datos.
+        Busca un libro por libro_id, y muestra sus datos.
     '''
     print("-----------------------------------------")
-    print("Buscar libro por ISBN")
+    print("Buscar libro por ID")
     print("-----------------------------------------")
     while True:
-        input_ISBN = int(input("Ingrese el ISBN del libro (o ingrese -1 para volver): "))
-        if input_ISBN == -1:
+        input_libro_id = input("Ingrese el ID del libro (o ingrese -1 para volver): ")
+        if input_libro_id == "-1":
             menuNavegacion()
         
-        if not input_ISBN in libros:
-            print("No se encontró ningún libro con ese ISBN.")
-        else:
-            # Si lo encuentra, mostrar datos
-            print(f'   {libros[input_ISBN]["titulo"]}')
-            print(f'      - Autor: {libros[input_ISBN]["autor"]}') 
-            print(f'      - ISBN: {libros[input_ISBN]["ISBN"]}')
-            if libros[input_ISBN]["stock"] < 1:
-                print(f'      - No hay stock disponible.')
-            else:
-                print(f'      - Stock disponible: {libros[input_ISBN]["stock"]}')
-            print()
+        # Buscar en el CSV
+        try:
+            arch = open("data.csv", "rt")
+            arch.readline()  # Saltar encabezados
+            
+            libro_encontrado = False
+            
+            while True:
+                linea = arch.readline()
+                if not linea:
+                    break
+                    
+                libro_id, titulo, autor, genero, fecha_publicacion, editorial, stock = linea.split(';')
+                stock = stock.rstrip("\n")
+                
+                if libro_id == input_libro_id:
+                    libro_encontrado = True
+                    print(f'   {titulo}')
+                    print(f'      - Autor: {autor}') 
+                    print(f'      - ID: {libro_id}')
+                    print(f'      - Género: {genero}')
+                    if int(stock) < 1:
+                        print(f'      - No hay stock disponible.')
+                    else:
+                        print(f'      - Stock disponible: {stock}')
+                    print()
+                    break
+            
+            arch.close()
+            
+            if not libro_encontrado:
+                print("No se encontró ningún libro con ese ID.")
+        except Exception as e:
+            print(f"Error al buscar el libro: {e}")
+        
         print()
         input("Presione Enter para volver al menú...")
         menuNavegacion()
 
 
 # Función - Alquilar un libro disponible
-def alquilarLibro(libros, usuarios, usuario_actual):
+def alquilarLibro():
     '''
         Muestra todos los libros disponibles, y permite alquilar uno.
     '''
@@ -449,126 +767,203 @@ def alquilarLibro(libros, usuarios, usuario_actual):
     print("-----------------------------------------")
     contador_libros_disponibles = 0
 
-    libros_ordenados = ordenar_mediante_stock(libros)
-    diccionario_asociativo = {
-        # codigo: {
-            #"isbn": 0000,
-        #}
-    }
+    print("Ingrese el género del libro que quiere alquilar:")
+    genero_seleccionado = input("   →  ")
 
-    for libro in libros_ordenados:
-        if libros[libro]["stock"] >= 1: #muestra todos los datos de todos los libros disponibles
-            contador_libros_disponibles += 1
-            diccionario_asociativo[contador_libros_disponibles] = {
-                "ISBN": libros[libro]["ISBN"]
-            }
-            print(f"   {contador_libros_disponibles})")
-            print(f'     {libros[libro]["titulo"]}')
-            print(f'      - Autor: {libros[libro]["autor"]}') 
-            print(f'      - ISBN: {libros[libro]["ISBN"]}')
-            print(f'      - Stock disponible: {libros[libro]["stock"]}')
-            print()
+    while not genero_seleccionado:
+        print("Error, el género no puede estar vacío. Ingrese el género del libro que quiere alquilar")
+        genero_seleccionado = input("   →  ")
 
-    if len(diccionario_asociativo) == 0:
-        print("No hay libros disponibles para alquilar.")
-        print()
-        menuNavegacion()
+    print("Ingrese el título del libro que quiere alquilar:")
+    titulo_seleccionado = input("   →  ")
+
+    while not titulo_seleccionado:
+        print("Error, el título no puede estar vacío. Ingrese el título del libro que quiere alquilar")
+        titulo_seleccionado = input("   →  ")
+        
+    print()
+    print("Resultados de búsqueda:")
+    libros = leer_libros(lambda libro: libro["genero"].lower() == genero_seleccionado and (titulo_seleccionado.lower() == libro["titulo"].lower() or titulo_seleccionado.lower() in libro["titulo"].lower()), max_a_mostrar=1000, pagina=1)
 
     print()
+    print("   Ingrese el número del libro que quiere alquilar:")
     print("   -1) Volver al menu")
     print()
     menu_selected = int(input("   →  "))
-    
 
-    while menu_selected < -1 or menu_selected > len(diccionario_asociativo):
-        print()
-        print("Opción inválida. Por favor, elija una opción en el rango indicado.")
+    while not menu_selected:
+        print("Error, el número del libro no puede estar vacío. Ingrese el número del libro que quiere alquilar")
         menu_selected = int(input("   →  "))
 
     if menu_selected == -1:
         menuNavegacion()
-    elif menu_selected != -1 and menu_selected <= len(diccionario_asociativo):
-        libro_seleccionado = diccionario_asociativo[menu_selected]["ISBN"]
-
-        libros[libro_seleccionado]["stock"] -= 1
-        usuarios[usuario_actual["email"]]["prestamos"].append(libro_seleccionado)
+    else:
+        # Primero buscar el libro para obtener el stock disponible (sin modificar el archivo aún)
+        try:
+            arch = open("data.csv", "rt")
+            arch.readline()  # Saltar encabezados
+            
+            contador_actual = 1
+            stock_disponible = 0
+            
+            while True:
+                linea = arch.readline()
+                if not linea:
+                    break
+                    
+                libro_id, titulo, autor, genero, fecha_publicacion, editorial, stock = linea.split(';')
+                stock = stock.rstrip("\n")
+                
+                libro_temp = {
+                    "libro_id": libro_id,
+                    "titulo": titulo,
+                    "autor": autor,
+                    "genero": genero,
+                    "stock": stock
+                }
+                
+                # Aplicar mismo filtro
+                if libro_temp["genero"].lower() == genero_seleccionado and (titulo_seleccionado.lower() == libro_temp["titulo"].lower() or titulo_seleccionado.lower() in libro_temp["titulo"].lower()):
+                    if contador_actual == menu_selected:
+                        stock_disponible = int(stock)
+                        break
+                    contador_actual += 1
+            
+            arch.close()
+        except:
+            stock_disponible = 0
+        
+        # Preguntar por la cantidad de copias
+        print(f"Stock disponible: {stock_disponible}")
+        print("¿Cuántas copias desea alquilar?")
         print()
-        print(f'{usuario_actual["nombre"]}, alquilaste correctamente el libro {libros[libro_seleccionado]["titulo"]}!')
-        input("Presione Enter para volver al menú...")
-        menuNavegacion()
+        cantidad_copias = int(input("   →  "))
+        
+        while cantidad_copias < 1 or cantidad_copias > stock_disponible:
+            if cantidad_copias < 1:
+                print("Error, la cantidad debe ser al menos 1.")
+            else:
+                print(f"Error, la cantidad no puede ser mayor al stock disponible ({stock_disponible}).")
+            print("¿Cuántas copias desea alquilar?")
+            cantidad_copias = int(input("   →  "))
+        
+        print("Por cuanto tiempo quiere alquilar el libro?")
+        print("   1) 1 semana")
+        print("   2) 1 mes")
+        print("   3) 2 meses")
+        print()
+        menu_selected_tiempo = int(input("   →  "))
+        while menu_selected_tiempo < 1 or menu_selected_tiempo > 3:
+            print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
+            menu_selected_tiempo = int(input("   →  "))
+
+        if menu_selected_tiempo == 1:
+            tiempo_alquiler = 7
+        elif menu_selected_tiempo == 2:
+            tiempo_alquiler = 30
+        elif menu_selected_tiempo == 3:
+            tiempo_alquiler = 60
+
+        libro_seleccionado = leer_libros_alquilar(lambda libro: libro["genero"].lower() == genero_seleccionado and (titulo_seleccionado.lower() == libro["titulo"].lower() or titulo_seleccionado.lower() in libro["titulo"].lower()), numero_libro_alquilar=menu_selected, cantidad=cantidad_copias)
+        if libro_seleccionado:
+
+            usuarios = leer_usuarios()
+
+            # Calcular la fecha de vencimiento correctamente usando la función agregar_dias_a_fecha
+            dia_vencimiento, mes_vencimiento, anio_vencimiento = agregar_dias_a_fecha(
+                date.today().day, 
+                date.today().month, 
+                date.today().year, 
+                tiempo_alquiler
+            )
+
+            # Generar un ID único para este préstamo (usando timestamp + contador)
+            prestamo_id = str(int(date.today().day) * 1000 + int(date.today().month) * 100 + int(date.today().year))
+            
+            usuarios[usuario_actual["email"]]["prestamos"][prestamo_id] = {
+                "libro_id": libro_seleccionado["libro_id"],
+                "cantidad": cantidad_copias,
+                "fecha_alquiler": str(date.today().day) + "/" + str(date.today().month) + "/" + str(date.today().year),
+                "tiempo_alquiler": tiempo_alquiler,
+                "fecha_vencimiento": str(dia_vencimiento) + "/" + str(mes_vencimiento) + "/" + str(anio_vencimiento)
+            }
+
+            usuario_actual["prestamos"] = usuarios[usuario_actual["email"]]["prestamos"]
+
+            guardar_usuarios(usuarios)
+
+            print(f'Has alquilado correctamente {cantidad_copias} copia(s) del libro {libro_seleccionado["titulo"]}.')
+        else:
+            print("Error, no se encontró el libro que quiere alquilar.")
+            print()
+    
+
+    
+    menuNavegacion()
 
 
 # Función - Devolver un libro alquilado
-def devolverLibro(libros, usuarios, usuario_actual):
+def devolverLibro(usuario_actual):
     '''
         Muestra todos los libros alquilados por el usuario actual, y permite devolver uno.
     '''
     print("-----------------------------------------")
     print("Devolver un libro alquilado")
     print("-----------------------------------------")
-    contador_libros_alquilados = 0
-    prestamos_usuario = usuarios[usuario_actual["email"]]["prestamos"]
+    
+    libros_encontrados = buscar_libros_por_ids(usuario_actual["prestamos"])
 
-    if not prestamos_usuario:
+    if not libros_encontrados:
         print("No hay préstamos activos para devolver.")
         print()
         input("Presione Enter para volver al menú...")
         menuNavegacion()
 
-    diccionario_asociativo = {
-        # 1: {
-            #"isbn": 0000,
-        #}
-    }
-
-    for prestamo in prestamos_usuario:
-        contador_libros_alquilados += 1
-        diccionario_asociativo[contador_libros_alquilados] = {
-                "ISBN": libros[prestamo]["ISBN"]
-        }
-        print(f"   {contador_libros_alquilados})")
-        print(f'     {libros[prestamo]["titulo"]}')
-        print(f'      - Autor: {libros[prestamo]["autor"]}') 
-        print(f'      - ISBN: {libros[prestamo]["ISBN"]}')
-        print()
+   
 
     print("   -1) Volver al menu")
     print()
     menu_selected = int(input("   →  "))
 
-    while menu_selected < -1 or menu_selected > len(diccionario_asociativo):
-        print()
-        print("Opción inválida. Por favor, elija una opción en el rango indicado debajo.")
-        menu_selected = int(input("   →  "))
-
     if menu_selected == -1:
         menuNavegacion()
-    elif menu_selected != -1 and menu_selected <= len(diccionario_asociativo):
+    else:
+        # Obtener el prestamo_id, libro_id y cantidad del libro seleccionado
+        prestamo_id = libros_encontrados[menu_selected - 1]["prestamo_id"]
+        libro_id = libros_encontrados[menu_selected - 1]["libro_id"]
+        cantidad = libros_encontrados[menu_selected - 1]["cantidad"]
         
-        libro_seleccionado = diccionario_asociativo[menu_selected]["ISBN"]
-        indice = usuarios[usuario_actual["email"]]["prestamos"].index(libro_seleccionado)
+        libro_seleccionado = leer_libros_alquilar(lambda libro: libro["libro_id"] == libro_id, numero_libro_alquilar=1, operacion="devolver", cantidad=cantidad)
+        if libro_seleccionado:
 
-        libros[libro_seleccionado]["stock"] += 1
-        usuarios[usuario_actual["email"]]["prestamos"].pop(indice)
-        print(f'Has devuelto correctamente el libro {libros[libro_seleccionado]["titulo"]}.')
-        
+            usuarios = leer_usuarios()
+
+            # Eliminar usando el prestamo_id (que es único)
+            del usuarios[usuario_actual["email"]]["prestamos"][prestamo_id]
+            usuario_actual["prestamos"] = usuarios[usuario_actual["email"]]["prestamos"]
+
+            guardar_usuarios(usuarios)
+
+            print(f'Has devuelto correctamente {cantidad} copia(s) del libro {libro_seleccionado["titulo"]}.')
+        else:
+            print("Error, no se encontró el libro que quiere devolver.")
+            print()
+
         input("Presione Enter para volver al menú...")
         menuNavegacion()
 
-
 # Función - Ver mis prestamos activos
-def verMisPrestamosActivos(libros, usuarios, usuario_actual):
+def verMisPrestamosActivos(usuario_actual):
     '''
         Muestra todos los libros alquilados por el usuario actual.
     '''
     print("-----------------------------------------")
-    print(f'Prestamos activos de {usuario_actual[1]}')
+    print(f'Prestamos activos de {usuario_actual["nombre"]}')
     print("-----------------------------------------")
 
-    for ISBN in usuarios[usuario_actual["email"]]["prestamos"]: #Listado de libros alquilados por el usuario actual
-        print(f'   {libros[ISBN]["titulo"]}') # imprime el título de cada libro
+    buscar_libros_por_ids(usuario_actual["prestamos"])
 
-    if not usuarios[usuario_actual["email"]]["prestamos"]:
+    if not usuario_actual["prestamos"]:
         print()
         print("No hay prestamos activos.")
         print()
@@ -580,7 +975,7 @@ def verMisPrestamosActivos(libros, usuarios, usuario_actual):
 
 
 # Función - Agregar libro (admin)
-def agregarLibro(libros):
+def agregarLibro():
     '''
         Función de administrador que permite agregar un libro a la biblioteca.
     '''
@@ -589,289 +984,273 @@ def agregarLibro(libros):
     print("-----------------------------------------")
     print()
 
+    print("Ingrese el libro_id:")
+    agregar_libro_id = input("   →  ")
 
-    ISBN = 0,
-    titulo = ""
-    autor = ""
-    stock = 0
-
-    print("Ingrese el ISBN:")
-    agregar_ISBN = input("   →  ")
-
-    verificado = 0
-    while verificado != 3: # Verifica recurrentemente que los tres TESTS se cumplan. 
-        verificado = 0 # En cada iteración, reinicia el estado de los TESTS anteriores.
+    while not agregar_libro_id:
+        print("El libro_id no puede estar vacío. Ingrese el nuevo libro_id")
+        agregar_libro_id = input("   →  ")
     
-        #Verifique cadena no vacía
-        while agregar_ISBN == "":
-            print("El ISBN no puede estar vacío. Ingrese el nuevo ISBN")
-            agregar_ISBN = input("   →  ")
-        verificado += 1
-    
-        #Verifique es es un número
-        while not agregar_ISBN.isdigit(): #con esa funcion verifica q todos los caracteres sean un num
-            print("Error, se espera que el ingreso sea un número")
-            agregar_ISBN = input("   →  ")
-        verificado += 1
-    
-        #Verifique que no existe en los libros.
-        while agregar_ISBN in libros:
-            print("Error, no se puede repetir ISBN, tiene que ser unico")
-            agregar_ISBN = input("   →  ")
-        verificado += 1
-    
-    ISBN = int(agregar_ISBN)
     print()
 
     print("Ingrese el título del libro:")
     agregar_titulo = input("   →  ")
-    while agregar_titulo == "":
+    while not agregar_titulo:
         print("El título no puede estar vacío. Ingrese el nuevo título:")
         agregar_titulo = input("   →  ")
-    titulo = agregar_titulo
     print()
 
     print("Ingrese el autor del libro:")
     agregar_autor = input("   →  ")
-    while agregar_autor == "":
+    while not agregar_autor:
         print("El autor no puede estar vacío. Ingrese el nuevo autor:")
         agregar_autor = input("   →  ")
-    autor = agregar_autor
+    print()
+    
+    print("Ingrese el género del libro:")
+    agregar_genero = input("   →  ")
+    while not agregar_genero:
+        print("El género no puede estar vacío. Ingrese el nuevo género:")
+        agregar_genero = input("   →  ")
+    print()
+    
+    print("Ingrese la fecha de publicación:")
+    agregar_fecha = input("   →  ")
+    while not agregar_fecha:
+        print("La fecha no puede estar vacía. Ingrese la nueva fecha:")
+        agregar_fecha = input("   →  ")
+    print()
+    
+    print("Ingrese la editorial:")
+    agregar_editorial = input("   →  ")
+    while not agregar_editorial:
+        print("La editorial no puede estar vacía. Ingrese la nueva editorial:")
+        agregar_editorial = input("   →  ")
     print()
 
     print("Ingrese la cantidad de libros a agregar:")
     agregar_stock = input("   →  ")
 
-    verificado = 0
-    while verificado != 3: # Verifica recurrentemente que los tres TESTS se cumplan. 
-        verificado = 0 # En cada iteración, reinicia el estado de los TESTS anteriores.
-    
-        #Verifique cadena no vacía
-        while agregar_stock == "":
-            print("El campo no puede estar vacío. Ingrese el nuevo valor")
-            agregar_stock = input("   →  ")
-        verificado += 1
-    
-        #Verifique es es un número
-        while not agregar_stock.isdigit(): #con esa funcion verifica q todos los caracteres sean un num
-            print("Error, se espera que el ingreso sea un número")
-            agregar_stock = input("   →  ")
-        verificado += 1
-    
-        while int(agregar_stock) <= 0:
-            print("La cantidad de libros a agregar debe ser mayor a 0. Ingrese la cantidad de libros a agregar:")
-            agregar_stock = input("   →  ")
-        verificado += 1
+    while not agregar_stock.isdigit() or int(agregar_stock) <= 0:
+        print("Error, ingrese un número mayor a 0:")
+        agregar_stock = input("   →  ")
 
-    
-    stock = int(agregar_stock)
-
-
-    libros[ISBN] = {
-        "ISBN": ISBN,
-        "titulo": titulo,
-        "autor": autor,
-        "stock": stock
+    # Crear el libro y guardarlo en CSV usando la función guardar_libros
+    libro_nuevo = {
+        "libro_id": agregar_libro_id,
+        "titulo": agregar_titulo,
+        "autor": agregar_autor,
+        "genero": agregar_genero,
+        "fecha_publicacion": agregar_fecha,
+        "editorial": agregar_editorial,
+        "stock": agregar_stock
     }
-
+    
+    guardar_libros(libro_nuevo)
     
     print()
-    print(f"Se han agregado {agregar_stock} copias del libro: {agregar_titulo}, de {agregar_autor}, con el ISBN {agregar_ISBN}.")
+    print(f"Se han agregado {agregar_stock} copias del libro: {agregar_titulo}, de {agregar_autor}, con el ID {agregar_libro_id}.")
     print()
-    verTodosLosLibros(libros)
+    input("Presione Enter para volver al menú...")
+    menuNavegacion()
 
 
 # Función - Modificar libro (admin)
-def modificarLibro(libros):
+def modificarLibro():
     '''
         Función de administrador que permite modificar un libro de la biblioteca.
     '''
     print("-----------------------------------------")
     print("Modificar libros")
     print("-----------------------------------------")
-    print("Ingrese el isbn del libro que desea modificar (Ingrese -1 para volver al menu)")
+    print("Ingrese el libro_id del libro que desea modificar (Ingrese -1 para volver al menu)")
     print()
-    isbn_a_modificar = input("   →  ")
+    libro_id_a_modificar = input("   →  ")
 
-    verificado = 0
-    while verificado != 3: # Verifica recurrentemente que los tres TESTS se cumplan. 
-        verificado = 0 # En cada iteración, reinicia el estado de los TESTS anteriores.
-    
-        #Verifique cadena no vacía
-        while isbn_a_modificar == "":
-            print("El ISBN no puede estar vacío. Ingrese nuevamente el ISBN")
-            isbn_a_modificar = input("   →  ")
-        verificado += 1
-    
-        #Verifique es es un número
-        while not isbn_a_modificar.isdigit(): #con esa funcion verifica q todos los caracteres sean un num
-            print("Error, se espera que el ingreso sea un número")
-            isbn_a_modificar = input("   →  ")
-        verificado += 1
-    
-        #Verifique que existe en los libros.
-        while not int(isbn_a_modificar) in libros:
-            print("Error, no se encontró el ISBN")
-            isbn_a_modificar = input("   →  ")
-        verificado += 1
-
-    isbn_a_modificar = int(isbn_a_modificar)
-    
-    if isbn_a_modificar == -1:
+    if libro_id_a_modificar == "-1":
         menuNavegacion()
-    else:
-        editando = True
-    while editando:
-
+    
+    # Buscar el libro en el CSV
+    try:
+        arch = open("data.csv", "rt")
+        lineas = arch.readlines()
+        arch.close()
+        
+        libro_encontrado = False
+        indice_libro = -1
+        libro_datos = {}
+        
+        for i in range(1, len(lineas)):
+            libro_id, titulo, autor, genero, fecha_publicacion, editorial, stock = lineas[i].split(';')
+            stock = stock.rstrip("\n")
+            
+            if libro_id == libro_id_a_modificar:
+                libro_encontrado = True
+                indice_libro = i
+                libro_datos = {
+                    "libro_id": libro_id,
+                    "titulo": titulo,
+                    "autor": autor,
+                    "genero": genero,
+                    "fecha_publicacion": fecha_publicacion,
+                    "editorial": editorial,
+                    "stock": stock
+                }
+                break
+        
+        if not libro_encontrado:
+            print("Error, no se encontró el libro con ese ID.")
+            print()
+            input("Presione Enter para volver al menú...")
+            menuNavegacion()
+        
+        # Permitir modificar el libro
         print()
         print("   1) Modificar el titulo")
         print("   2) Modificar el autor")
         print("   3) Modificar el stock disponible")
         print()
         parte_a_modificar = int(input("   →  "))
-        print()
+        
         while parte_a_modificar < 1 or parte_a_modificar > 3:
             print("Error. Ingrese una opción válida (1-3):")
-            print()
-            print("   1) Modificar el titulo")
-            print("   2) Modificar el autor")
-            print("   3) Modificar el stock disponible")
-            print()
             parte_a_modificar = int(input("   →  "))
 
         if parte_a_modificar == 1:
-            print(f'      Título actual: {libros[isbn_a_modificar]["titulo"]}')
+            print(f'      Título actual: {libro_datos["titulo"]}')
             print("Ingrese el nuevo título")
             nuevo_titulo = input("   →  ")
-            libros[isbn_a_modificar]["titulo"]= nuevo_titulo
+            libro_datos["titulo"] = nuevo_titulo
         elif parte_a_modificar == 2:
-            print(f'      Autor actual: {libros[isbn_a_modificar]["autor"]}')
+            print(f'      Autor actual: {libro_datos["autor"]}')
             print("Ingrese el nuevo autor")
             nuevo_autor = input("   →  ")
-            libros[isbn_a_modificar]["autor"]= nuevo_autor
+            libro_datos["autor"] = nuevo_autor
         elif parte_a_modificar == 3:
-            print(f'      Libros disponibles actuales: {libros[isbn_a_modificar]["stock"]}')
-            print("Ingrese la nueva cantidad de libros disponibles")
+            print(f'      Stock actual: {libro_datos["stock"]}')
+            print("Ingrese el nuevo stock")
             nuevo_stock = input("   →  ")
             
-            verificado = 0
-            while verificado != 3: # Verifica recurrentemente que los tres TESTS se cumplan. 
-                verificado = 0 # En cada iteración, reinicia el estado de los TESTS anteriores.
-
-                #Verifique cadena no vacía
-                while nuevo_stock == "":
-                    print("El campo no puede estar vacío. Ingrese el nuevo valor")
-                    nuevo_stock = input("   →  ")
-                verificado += 1
-
-                #Verifique es es un número
-                while not nuevo_stock.isdigit(): #con esa funcion verifica q todos los caracteres sean un num
-                    print("Error, se espera que el ingreso sea un número")
-                    nuevo_stock = input("   →  ")
-                verificado += 1
-
-                while int(nuevo_stock) <= 0:
-                    print("La cantidad de libros a agregar debe ser mayor a 0. Ingrese la cantidad de libros a agregar:")
-                    nuevo_stock = input("   →  ")
-                verificado += 1
+            while not nuevo_stock.isdigit() or int(nuevo_stock) < 0:
+                print("Error, ingrese un número válido (0 o mayor):")
+                nuevo_stock = input("   →  ")
             
-            nuevo_stock = int(nuevo_stock)
-
-            libros[isbn_a_modificar]["stock"] = nuevo_stock
-
+            libro_datos["stock"] = nuevo_stock
+        
+        # Guardar los cambios usando guardar_libros
+        guardar_libros(libro_datos)
+        
         print("Datos actualizados correctamente.")
         print()
-        print("Deseas seguir modificando el libro?")
-        print("   1) Si")
-        print("   2) No")
+        input("Presione Enter para volver al menú...")
+        menuNavegacion()
+        
+    except Exception as e:
+        print(f"Error al modificar el libro: {e}")
         print()
-        seguir_modificando = input("   →  ")
-        verificado = 0
-
-        while verificado != 3: # Verifica recurrentemente que los tres TESTS se cumplan. 
-            verificado = 0 # En cada iteración, reinicia el estado de los TESTS anteriores.
-
-            #Verifique cadena no vacía
-            while seguir_modificando == "":
-                print("El campo no puede estar vacío. Ingrese el nuevo valor")
-                seguir_modificando = input("   →  ")
-            verificado += 1
-
-            #Verifique es es un número
-            while not seguir_modificando.isdigit(): #con esa funcion verifica q todos los caracteres sean un num
-                print("Error, se espera que el ingreso sea un número")
-                seguir_modificando = input("   →  ")
-            verificado += 1
-
-            while int(seguir_modificando) < 1 or int(seguir_modificando) > 2:
-                print("Error. Ingrese una opción válida (1-2):")
-                seguir_modificando = input("   →  ")
-            verificado += 1
-        
-        seguir_modificando = int(seguir_modificando)
-        
-        if seguir_modificando == 2:
-            editando = False
-            menuNavegacion()
+        input("Presione Enter para volver al menú...")
+        menuNavegacion()
 
 
 # Función - Eliminar libro (admin)
-def eliminarLibro(libros):
+def eliminarLibro():
     '''
         Función de administrador que permite eliminar un libro de la biblioteca.
     '''
     print("-----------------------------------------")
     print("Eliminar un libro")
     print("-----------------------------------------")
-    print("Ingrese el ISBN del libro que quiere eliminar (Ingrese -1 para volver al menu)")
+    print("Ingrese el libro_id del libro que quiere eliminar (Ingrese -1 para volver al menu)")
     print()
-    input_ISBN = int(input("   →  "))
+    input_libro_id = input("   →  ")
 
-    while input_ISBN != -1 and input_ISBN not in libros:
-        if input_ISBN not in libros:
-            print("Error, el libro que quiere eliminar no existe.")
-        print()
-        print("Ingrese el ISBN del libro que quiere eliminar (Ingrese -1 para volver al menu)")
-        input_ISBN = int(input("   →  "))
-
-    if input_ISBN == -1:
+    if input_libro_id == "-1":
         menuNavegacion()
     else:
-        titulo = libros[input_ISBN]["titulo"]
-        libros.pop(input_ISBN)
+        # Buscar el libro en el CSV
+        try:
+            arch = open("data.csv", "rt")
+            lineas = arch.readlines()
+            arch.close()
+            
+            libro_encontrado = False
+            titulo_libro = ""
+            nuevas_lineas = [lineas[0]]  # Mantener el encabezado
+            
+            for i in range(1, len(lineas)):
+                libro_id, titulo, autor, genero, fecha_publicacion, editorial, stock = lineas[i].split(';')
+                
+                if libro_id == input_libro_id:
+                    libro_encontrado = True
+                    titulo_libro = titulo
+                    # No agregar esta línea (eliminar el libro)
+                else:
+                    nuevas_lineas.append(lineas[i])
+            
+            if not libro_encontrado:
+                print("Error, el libro que quiere eliminar no existe.")
+                print()
+                input("Presione Enter para volver al menú...")
+                menuNavegacion()
+            
+            # Guardar el CSV sin el libro eliminado
+            arch = open("data.csv", "wt")
+            arch.writelines(nuevas_lineas)
+            arch.close()
+            
+            # Eliminar todos los préstamos de este libro de todos los usuarios
+            usuarios = leer_usuarios()
+            for email in usuarios:
+                prestamos_a_eliminar = []
+                for prestamo_id, prestamo_data in usuarios[email]["prestamos"].items():
+                    if prestamo_data["libro_id"] == input_libro_id:
+                        prestamos_a_eliminar.append(prestamo_id)
+                
+                for prestamo_id in prestamos_a_eliminar:
+                    del usuarios[email]["prestamos"][prestamo_id]
+            
+            guardar_usuarios(usuarios)
 
-        for usuario in usuarios:
-            if input_ISBN in usuarios[usuario]["prestamos"]:
-                usuarios[usuario]["prestamos"].remove(input_ISBN)
-
-        print ("El libro", titulo,"fue eliminado correctamente.")
-        print()
-        input("Presione Enter para volver al menú...")
-        menuNavegacion()
+            print ("El libro", titulo_libro,"fue eliminado correctamente.")
+            print()
+            input("Presione Enter para volver al menú...")
+            menuNavegacion()
+            
+        except Exception as e:
+            print(f"Error al eliminar el libro: {e}")
+            print()
+            input("Presione Enter para volver al menú...")
+            menuNavegacion()
 
 
 # # Función - Prestamos activos de todos los usuarios (admin)
-def verTodosLosPrestamosActivos(usuarios, libros):
+def verTodosLosPrestamosActivos():
     '''
         Función de administrador que permite ver todos los prestamos activos de todos los usuarios.
     '''
     print("-----------------------------------------")
     print("Prestamos activos de todos los usuarios")
     print("-----------------------------------------")
-    for i in usuarios:
-        prestamos_del_usuario = usuarios[i]["prestamos"]
+    
+    usuarios = leer_usuarios()
+    
+    for email in usuarios:
+        prestamos_del_usuario = usuarios[email]["prestamos"]
 
         if prestamos_del_usuario:
-            print(usuarios[i]["nombre"].capitalize() + ":", len(prestamos_del_usuario),"libros")
-        
-            for libro in prestamos_del_usuario:
-                datos_del_libro = libros[libro]
-                print("   ", datos_del_libro["titulo"])
-                print("      - Autor:", datos_del_libro["autor"])
-                print("      - ISBN:", datos_del_libro["ISBN"])
-                print("      - Stock:", datos_del_libro["stock"])
-                print()
+            print(usuarios[email]["nombre"].capitalize() + ":", len(prestamos_del_usuario),"préstamo(s)")
             print()
+        
+            # Usar la función buscar_libros_por_ids para obtener los datos de los libros
+            libros_encontrados = buscar_libros_por_ids(prestamos_del_usuario)
+            
+            for libro in libros_encontrados:
+                print("   ", libro["titulo"])
+                print("      - Autor:", libro["autor"])
+                print("      - Cantidad:", libro["cantidad"])
+                print("      - Fecha alquiler:", libro["fecha_alquiler"])
+                print("      - Fecha vencimiento:", libro["fecha_vencimiento"])
+                print()
             print()
     input("Presione Enter para volver al menú...")
     menuNavegacion()
@@ -906,7 +1285,7 @@ def menuNavegacion():
     print("Menú de navegación")
     print("-----------------------------------------")
     print("   1) Ver todos los libros")
-    print("   2) Buscar libro por ISBN")
+    print("   2) Buscar libro")
     print("   3) Alquilar un libro disponible")
     print("   4) Devolver un libro alquilado")
     print("   5) Ver tus préstamos activos")
@@ -931,23 +1310,23 @@ def menuNavegacion():
         print()
 
     if menu_selected == 1:
-        verTodosLosLibros(libros)
+        verTodosLosLibros()
     elif menu_selected == 2:
-        buscarLibroPorISBN(libros)
+        buscarLibroPorISBN()
     elif menu_selected == 3:
-        alquilarLibro(libros, usuarios, usuario_actual)
+        alquilarLibro()
     elif menu_selected == 4:
-        devolverLibro(libros, usuarios, usuario_actual)
+        devolverLibro(usuario_actual)
     elif menu_selected == 5:
-        verMisPrestamosActivos(libros, usuarios, usuario_actual)
+        verMisPrestamosActivos(usuario_actual)
     elif menu_selected == 6:
-        agregarLibro(libros)
+        agregarLibro()
     elif menu_selected == 7:
-        modificarLibro(libros)
+        modificarLibro()
     elif menu_selected == 8:
-        eliminarLibro(libros)
+        eliminarLibro()
     elif menu_selected == 9:
-        verTodosLosPrestamosActivos(usuarios, libros)
+        verTodosLosPrestamosActivos()
     elif menu_selected == -1:
         cerrarSesion(usuario_actual)
     elif menu_selected == -2:

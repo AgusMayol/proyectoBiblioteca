@@ -7,14 +7,11 @@
 - Matrices
 - Libros robados o fuera de tiempo
 - Especificar tiempo alquilado y penalizaciones en caso de vencimiento
-- Precios de los libros ?
-- Precio por alquilar un libro ?
 - Cuanto tiempo duraría un alquiler ?
-- Mejorar la vista de los libros, ya sea con tablas o paginación
-- Añadir timestamps a los eventos
-- Busqueda por generos
-- Busqueda por título
-- .csv de libros
+- [x] Mejorar la vista de los libros, ya sea con tablas o paginación
+- [x] Añadir fechas a los eventos importantes
+- [x] Busqueda por género y título
+- [x] .csv de libros
 
 
 
