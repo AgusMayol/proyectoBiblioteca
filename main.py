@@ -1,13 +1,15 @@
 import json
 import os
-from datetime import date
+import random
+from datetime import date, datetime
 
 usuario_actual = {
     "email": "",
     "nombre": "usuario",
     "contrasenia": "",
     "prestamos": {},
-    "administrador": False
+    "administrador": False,
+    "restriccion_hasta": None  # Fecha hasta la cual el usuario tiene restricción (formato: "DD/MM/YYYY")
 }
 
 # Función - Input seguro de enteros
@@ -154,6 +156,134 @@ def agregar_dias_a_fecha(dia, mes, anio, dias_a_agregar):
     
     return (dia, mes, anio)
 
+# Función - Calcular días entre dos fechas
+def calcular_dias_entre_fechas(dia1, mes1, anio1, dia2, mes2, anio2):
+    """
+    Calcula la diferencia en días entre dos fechas.
+    
+    Args:
+        dia1, mes1, anio1: Primera fecha
+        dia2, mes2, anio2: Segunda fecha
+    
+    Returns:
+        Número de días de diferencia (positivo si fecha2 > fecha1)
+    """
+    try:
+        fecha1 = datetime(anio1, mes1, dia1)
+        fecha2 = datetime(anio2, mes2, dia2)
+        diferencia = (fecha2 - fecha1).days
+        return diferencia
+    except:
+        return 0
+
+# Función - Verificar si un préstamo está vencido
+def esta_vencido(fecha_vencimiento_str):
+    """
+    Verifica si un préstamo está vencido comparando con la fecha actual.
+    
+    Args:
+        fecha_vencimiento_str: Fecha de vencimiento en formato "DD/MM/YYYY"
+    
+    Returns:
+        True si está vencido, False si no
+    """
+    try:
+        partes = fecha_vencimiento_str.split('/')
+        dia_venc = int(partes[0])
+        mes_venc = int(partes[1])
+        anio_venc = int(partes[2])
+        
+        hoy = date.today()
+        dias_diferencia = calcular_dias_entre_fechas(
+            dia_venc, mes_venc, anio_venc,
+            hoy.day, hoy.month, hoy.year
+        )
+        
+        return dias_diferencia > 0  # Si la diferencia es positiva, está vencido
+    except:
+        return False
+
+# Función - Calcular días de retraso
+def calcular_dias_vencidos(fecha_vencimiento_str):
+    """
+    Calcula cuántos días lleva vencido un préstamo.
+    
+    Args:
+        fecha_vencimiento_str: Fecha de vencimiento en formato "DD/MM/YYYY"
+    
+    Returns:
+        Número de días vencidos (0 si no está vencido)
+    """
+    try:
+        partes = fecha_vencimiento_str.split('/')
+        dia_venc = int(partes[0])
+        mes_venc = int(partes[1])
+        anio_venc = int(partes[2])
+        
+        hoy = date.today()
+        dias_diferencia = calcular_dias_entre_fechas(
+            dia_venc, mes_venc, anio_venc,
+            hoy.day, hoy.month, hoy.year
+        )
+        
+        return max(0, dias_diferencia)  # Retorna 0 si no está vencido, o los días de retraso
+    except:
+        return 0
+
+# Función - Obtener préstamos vencidos de un usuario
+def obtener_prestamos_vencidos(prestamos_dict):
+    """
+    Filtra y retorna solo los préstamos vencidos de un usuario.
+    
+    Args:
+        prestamos_dict: Diccionario de préstamos del usuario
+    
+    Returns:
+        Diccionario con solo los préstamos vencidos
+    """
+    prestamos_vencidos = {}
+    for prestamo_id, prestamo_data in prestamos_dict.items():
+        try:
+            if isinstance(prestamo_data, dict) and "fecha_vencimiento" in prestamo_data:
+                if esta_vencido(prestamo_data["fecha_vencimiento"]):
+                    prestamos_vencidos[prestamo_id] = prestamo_data
+        except:
+            continue
+    return prestamos_vencidos
+
+# Función - Verificar si el usuario tiene restricción activa
+def tiene_restriccion_activa(usuario):
+    """
+    Verifica si el usuario tiene una restricción activa para alquilar libros.
+    
+    Args:
+        usuario: Diccionario con los datos del usuario
+    
+    Returns:
+        Tupla (tiene_restriccion: bool, dias_restantes: int)
+    """
+    if "restriccion_hasta" not in usuario or usuario["restriccion_hasta"] is None:
+        return (False, 0)
+    
+    try:
+        partes = usuario["restriccion_hasta"].split('/')
+        dia_rest = int(partes[0])
+        mes_rest = int(partes[1])
+        anio_rest = int(partes[2])
+        
+        hoy = date.today()
+        dias_diferencia = calcular_dias_entre_fechas(
+            hoy.day, hoy.month, hoy.year,
+            dia_rest, mes_rest, anio_rest
+        )
+        
+        if dias_diferencia > 0:
+            return (True, dias_diferencia)
+        else:
+            return (False, 0)
+    except:
+        return (False, 0)
+
 def leer_usuarios():
     usuarios = {}
     try:
@@ -203,20 +333,10 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
         # Saltar la primera línea (encabezados)
         arch.readline()
         
-        # Calcular el número máximo que se mostrará para determinar el ancho de la columna
-        max_numero_mostrar = contador_inicio + max_a_mostrar - 1
-        ancho_num = max(len(str(max_numero_mostrar)), 3)  # Mínimo 3 para "N°"
-        ancho_num_total = ancho_num + 2  # +2 para los espacios a los lados
-        
-        print(f"\n{'─' * 20} PÁGINA {pagina} {'─' * 20}")
-        print(f"┌{'─' * ancho_num_total}┬{'─' * 37}┬{'─' * 32}┬{'─' * 17}┬{'─' * 7}┐")
-        print(f"│ {'N°':^{ancho_num}} │ {'TÍTULO':<35} │ {'AUTOR':<30} │ {'GÉNERO':<15} │ {'STOCK':>5} │")
-        print(f"├{'─' * ancho_num_total}┼{'─' * 37}┼{'─' * 32}┼{'─' * 17}┼{'─' * 7}┤")
-        
-        libros_en_pagina = 0
+        # Primero, recolectar los libros que se mostrarán en esta página
+        libros_a_mostrar = []
         libros_omitidos = 0
         contador_actual = contador_inicio
-        primera_fila = True
         
         while True:
             linea = arch.readline()
@@ -252,28 +372,49 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
                 libros_omitidos += 1
                 continue
             
-            # Mostrar libro si no hemos alcanzado el límite de la página
-            if libros_en_pagina < max_a_mostrar:
-                # Imprimir separador antes de cada fila excepto la primera
-                if not primera_fila:
-                    print(f"├{'─' * ancho_num_total}┼{'─' * 37}┼{'─' * 32}┼{'─' * 17}┼{'─' * 7}┤")
-                print(f"│ {contador_actual:>{ancho_num}} │ {titulo:<35} │ {autor:<30} │ {genero:<15} │ {stock:>5} │")
-                primera_fila = False
-                libros_en_pagina += 1
+            # Agregar libro a la lista si no hemos alcanzado el límite de la página
+            if len(libros_a_mostrar) < max_a_mostrar:
+                libros_a_mostrar.append({
+                    "numero": contador_actual,
+                    "titulo": titulo,
+                    "autor": autor,
+                    "genero": genero,
+                    "stock": stock
+                })
                 contador_actual += 1
             else:
                 # Si hemos alcanzado el límite de la página, salir del bucle
                 break
-                
-        print(f"└{'─' * ancho_num_total}┴{'─' * 37}┴{'─' * 32}┴{'─' * 17}┴{'─' * 7}┘")
         
-        # Si no se mostraron libros en esta página, no hay más páginas
-        if libros_en_pagina == 0:
+        arch.close()
+        
+        # Si no hay libros para mostrar, mostrar solo el mensaje
+        if len(libros_a_mostrar) == 0:
+            print()
             print("No hay más libros para mostrar.")
             return
+        
+        # Si hay libros, mostrar la tabla
+        max_numero_mostrar = libros_a_mostrar[-1]["numero"]
+        ancho_num = max(len(str(max_numero_mostrar)), 3)  # Mínimo 3 para "N°"
+        ancho_num_total = ancho_num + 2  # +2 para los espacios a los lados
+        
+        print(f"\n{'─' * 20} PÁGINA {pagina} {'─' * 20}")
+        print(f"┌{'─' * ancho_num_total}┬{'─' * 37}┬{'─' * 32}┬{'─' * 17}┬{'─' * 7}┐")
+        print(f"│ {'N°':^{ancho_num}} │ {'TÍTULO':<35} │ {'AUTOR':<30} │ {'GÉNERO':<15} │ {'STOCK':>5} │")
+        print(f"├{'─' * ancho_num_total}┼{'─' * 37}┼{'─' * 32}┼{'─' * 17}┼{'─' * 7}┤")
+        
+        # Imprimir todos los libros
+        for i, libro in enumerate(libros_a_mostrar):
+            # Imprimir separador antes de cada fila excepto la primera
+            if i > 0:
+                print(f"├{'─' * ancho_num_total}┼{'─' * 37}┼{'─' * 32}┼{'─' * 17}┼{'─' * 7}┤")
+            print(f"│ {libro['numero']:>{ancho_num}} │ {libro['titulo']:<35} │ {libro['autor']:<30} │ {libro['genero']:<15} │ {libro['stock']:>5} │")
+        
+        print(f"└{'─' * ancho_num_total}┴{'─' * 37}┴{'─' * 32}┴{'─' * 17}┴{'─' * 7}┘")
 
-        # Preguntar por la siguiente página solo si la próxima página no estaría vacía
-        if libros_en_pagina == max_a_mostrar:  # Si se mostraron todos los libros posibles, puede haber más
+        # Preguntar por la siguiente página solo si se mostró el número máximo de libros
+        if len(libros_a_mostrar) == max_a_mostrar:
             print("Desea ver la siguiente página?")
             print("   1) Si")
             print("   2) No")
@@ -282,9 +423,9 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
         
             if menu_selected == 1:
                 # Calcular cuántos libros se han mostrado hasta ahora
-                total_libros_mostrados = libros_mostrados + libros_en_pagina
+                total_libros_mostrados = libros_mostrados + len(libros_a_mostrar)
                 # Calcular el nuevo contador para la siguiente página
-                nuevo_contador = contador_inicio + libros_en_pagina
+                nuevo_contador = contador_inicio + len(libros_a_mostrar)
                 leer_libros(filtro=filtro, max_a_mostrar=max_a_mostrar, pagina=pagina + 1, libros_mostrados=total_libros_mostrados, total_libros=total_libros, contador_inicio=nuevo_contador)
             else:
                 return
@@ -304,12 +445,13 @@ def leer_libros(filtro=None, max_a_mostrar=10, pagina=1, libros_mostrados=0, tot
             pass
 
 
-def buscar_libros_por_ids(prestamos_dict):
+def buscar_libros_por_ids(prestamos_dict, mostrar_vencidos=False):
     """
     Busca y muestra libros específicos del archivo CSV por coincidencia exacta de libro_id.
     
     Args:
         prestamos_dict: Diccionario de préstamos con formato {prestamo_id: {"libro_id": xxx, "cantidad": yyy, "fecha_alquiler": "YYYY-MM-DD"}}
+        mostrar_vencidos: Si es True, muestra una columna indicando si el libro está vencido
     
     Returns:
         Lista de diccionarios con los datos de los libros encontrados y sus prestamo_ids
@@ -393,22 +535,45 @@ def buscar_libros_por_ids(prestamos_dict):
             ancho_num = max(len(str(max_numero)), 3)  # Mínimo 3 para "N°"
             ancho_num_total = ancho_num + 2  # +2 para los espacios a los lados
             
-            print(f"\n{'─' * 15} LIBROS ENCONTRADOS ({len(libros_encontrados)}) {'─' * 15}")
-            print(f"┌{'─' * ancho_num_total}┬{'─' * 35}┬{'─' * 30}┬{'─' * 15}┬{'─' * 10}┬{'─' * 17}┬{'─' * 19}┐")
-            print(f"│ {'N°':^{ancho_num}} │ {'TÍTULO':<33} │ {'AUTOR':<28} │ {'GÉNERO':<13} │ {'CANTIDAD':<8} │ {'FECHA ALQUILER':<15} │ {'FECHA VENCIMIENTO':<17} │")
-            print(f"├{'─' * ancho_num_total}┼{'─' * 35}┼{'─' * 30}┼{'─' * 15}┼{'─' * 10}┼{'─' * 17}┼{'─' * 19}┤")
-            
-            contador = 1
-            primera_fila = True
-            for libro in libros_encontrados:
-                # Imprimir separador antes de cada fila excepto la primera
-                if not primera_fila:
-                    print(f"├{'─' * ancho_num_total}┼{'─' * 35}┼{'─' * 30}┼{'─' * 15}┼{'─' * 10}┼{'─' * 17}┼{'─' * 19}┤")
-                print(f"│ {contador:>{ancho_num}} │ {libro['titulo']:<33} │ {libro['autor']:<28} │ {libro['genero']:<13} │ {libro['cantidad']:>8} │ {libro['fecha_alquiler']:<15} │ {libro['fecha_vencimiento']:<17} │")
-                primera_fila = False
-                contador += 1
-            
-            print(f"└{'─' * ancho_num_total}┴{'─' * 35}┴{'─' * 30}┴{'─' * 15}┴{'─' * 10}┴{'─' * 17}┴{'─' * 19}┘")
+            if mostrar_vencidos:
+                print(f"\n{'─' * 15} LIBROS ENCONTRADOS ({len(libros_encontrados)}) {'─' * 15}")
+                print(f"┌{'─' * ancho_num_total}┬{'─' * 35}┬{'─' * 30}┬{'─' * 15}┬{'─' * 10}┬{'─' * 17}┬{'─' * 19}┬{'─' * 10}┐")
+                print(f"│ {'N°':^{ancho_num}} │ {'TÍTULO':<33} │ {'AUTOR':<28} │ {'GÉNERO':<13} │ {'CANTIDAD':<8} │ {'FECHA ALQUILER':<15} │ {'FECHA VENCIMIENTO':<17} │ {'ESTADO':<8} │")
+                print(f"├{'─' * ancho_num_total}┼{'─' * 35}┼{'─' * 30}┼{'─' * 15}┼{'─' * 10}┼{'─' * 17}┼{'─' * 19}┼{'─' * 10}┤")
+                
+                contador = 1
+                primera_fila = True
+                for libro in libros_encontrados:
+                    # Imprimir separador antes de cada fila excepto la primera
+                    if not primera_fila:
+                        print(f"├{'─' * ancho_num_total}┼{'─' * 35}┼{'─' * 30}┼{'─' * 15}┼{'─' * 10}┼{'─' * 17}┼{'─' * 19}┼{'─' * 10}┤")
+                    
+                    # Verificar si está vencido
+                    vencido = esta_vencido(libro['fecha_vencimiento'])
+                    estado = "VENCIDO" if vencido else "ACTIVO"
+                    
+                    print(f"│ {contador:>{ancho_num}} │ {libro['titulo']:<33} │ {libro['autor']:<28} │ {libro['genero']:<13} │ {libro['cantidad']:>8} │ {libro['fecha_alquiler']:<15} │ {libro['fecha_vencimiento']:<17} │ {estado:<8} │")
+                    primera_fila = False
+                    contador += 1
+                
+                print(f"└{'─' * ancho_num_total}┴{'─' * 35}┴{'─' * 30}┴{'─' * 15}┴{'─' * 10}┴{'─' * 17}┴{'─' * 19}┴{'─' * 10}┘")
+            else:
+                print(f"\n{'─' * 15} LIBROS ENCONTRADOS ({len(libros_encontrados)}) {'─' * 15}")
+                print(f"┌{'─' * ancho_num_total}┬{'─' * 35}┬{'─' * 30}┬{'─' * 15}┬{'─' * 10}┬{'─' * 17}┬{'─' * 19}┐")
+                print(f"│ {'N°':^{ancho_num}} │ {'TÍTULO':<33} │ {'AUTOR':<28} │ {'GÉNERO':<13} │ {'CANTIDAD':<8} │ {'FECHA ALQUILER':<15} │ {'FECHA VENCIMIENTO':<17} │")
+                print(f"├{'─' * ancho_num_total}┼{'─' * 35}┼{'─' * 30}┼{'─' * 15}┼{'─' * 10}┼{'─' * 17}┼{'─' * 19}┤")
+                
+                contador = 1
+                primera_fila = True
+                for libro in libros_encontrados:
+                    # Imprimir separador antes de cada fila excepto la primera
+                    if not primera_fila:
+                        print(f"├{'─' * ancho_num_total}┼{'─' * 35}┼{'─' * 30}┼{'─' * 15}┼{'─' * 10}┼{'─' * 17}┼{'─' * 19}┤")
+                    print(f"│ {contador:>{ancho_num}} │ {libro['titulo']:<33} │ {libro['autor']:<28} │ {libro['genero']:<13} │ {libro['cantidad']:>8} │ {libro['fecha_alquiler']:<15} │ {libro['fecha_vencimiento']:<17} │")
+                    primera_fila = False
+                    contador += 1
+                
+                print(f"└{'─' * ancho_num_total}┴{'─' * 35}┴{'─' * 30}┴{'─' * 15}┴{'─' * 10}┴{'─' * 17}┴{'─' * 19}┘")
         else:
             print("\nNo se encontraron libros con los IDs proporcionados.")
         
@@ -515,6 +680,38 @@ def leer_libros_alquilar(filtro=None, contador_inicio=1, numero_libro_alquilar=0
             arch.close()
         except:
             pass
+
+
+def verificar_libro_id_existe(libro_id):
+    """
+    Verifica si un libro_id ya existe en el archivo CSV.
+    
+    Args:
+        libro_id: El ID del libro a verificar (string)
+    
+    Returns:
+        True si el libro_id existe, False si no existe
+    """
+    try:
+        with open("data.csv", "rt") as arch:
+            # Saltar encabezado
+            arch.readline()
+            
+            # Leer línea por línea
+            for linea in arch:
+                try:
+                    partes = linea.split(';')
+                    if len(partes) >= 1:
+                        id_actual = partes[0]
+                        if id_actual == libro_id:
+                            return True
+                except Exception:
+                    continue
+        return False
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return False
 
 
 def guardar_libros(libro):
@@ -662,6 +859,7 @@ def login(email, contrasenia, usuarios, usuario_actual):
             usuario_actual["contrasenia"] = usuarios[email]["contrasenia"]
             usuario_actual["prestamos"] = usuarios[email]["prestamos"]
             usuario_actual["administrador"] = usuarios[email]["administrador"]
+            usuario_actual["restriccion_hasta"] = usuarios[email].get("restriccion_hasta", None)
             return True
         else: #Si el email o contraseña no existen, o existen pero no coinciden en posicion
             return False
@@ -698,8 +896,42 @@ def showLogin(usuarios, usuario_actual):
     print()
     print("   Hola de nuevo,", usuario_actual["nombre"], "👋")
     print()
+    
+    # Verificar si el usuario tiene préstamos vencidos
+    prestamos_vencidos = obtener_prestamos_vencidos(usuario_actual["prestamos"])
+    if prestamos_vencidos:
+        print("   ⚠️  ATENCIÓN: Tienes préstamos vencidos.")
+        print(f"   Tienes {len(prestamos_vencidos)} libro(s) con fecha de devolución vencida.")
+        print("   Por favor, devuélvelos lo antes posible.")
+        
+        # Calcular el total de días vencidos más alto
+        max_dias_vencidos = 0
+        for prestamo_data in prestamos_vencidos.values():
+            dias_vencidos = calcular_dias_vencidos(prestamo_data["fecha_vencimiento"])
+            if dias_vencidos > max_dias_vencidos:
+                max_dias_vencidos = dias_vencidos
+        
+        if max_dias_vencidos > 0:
+            print(f"   Tiempo de retraso: hasta {max_dias_vencidos} día(s).")
+            
+            # Aplicar restricción si no existe ya
+            usuarios = leer_usuarios()
+            dia_restriccion, mes_restriccion, anio_restriccion = agregar_dias_a_fecha(
+                date.today().day,
+                date.today().month,
+                date.today().year,
+                max_dias_vencidos
+            )
+            fecha_restriccion = f"{dia_restriccion}/{mes_restriccion}/{anio_restriccion}"
+            
+            usuarios[usuario_actual["email"]]["restriccion_hasta"] = fecha_restriccion
+            usuario_actual["restriccion_hasta"] = fecha_restriccion
+            guardar_usuarios(usuarios)
+            
+            print(f"   ⛔ Restricción aplicada: No podrás alquilar libros hasta el {fecha_restriccion}")
+        print()
 
-    menuNavegacion()
+    menuNavegacion(usuario_actual)
 
 
 # Función - Registrarse
@@ -741,9 +973,10 @@ def showRegister(usuarios, usuario_actual):
         usuarios[email] = {
             "nombre": nombre,
             "contrasenia": contrasenia,
-            "prestamos": [],
+            "prestamos": {},
             "administrador": False,
-            "respuesta_seguridad": respuesta_seguridad
+            "respuesta_seguridad": respuesta_seguridad,
+            "restriccion_hasta": None
         }
 
         # Agregar al json de usuarios
@@ -797,7 +1030,8 @@ def recoverPassword(usuarios, usuario_actual):
             "contrasenia": contrasenia,
             "prestamos": usuarios[email]["prestamos"],
             "administrador": usuarios[email]["administrador"],
-            "respuesta_seguridad": usuarios[email]["respuesta_seguridad"]
+            "respuesta_seguridad": usuarios[email]["respuesta_seguridad"],
+            "restriccion_hasta": usuarios[email].get("restriccion_hasta", None)
         }
 
         # Agregar al json de usuarios
@@ -847,11 +1081,11 @@ def verTodosLosLibros(): #Muestra todos los libros de la biblioteca, disponibles
 
     print()
     input("Presione Enter para volver al menú...")
-    menuNavegacion()
+    menuNavegacion(usuario_actual)
 
 
 # Función - Buscar libro por género y título
-def buscarLibro():
+def buscarLibro(usuario_actual):
     '''
         Busca libros por género y título, y muestra los resultados en una tabla.
     '''
@@ -884,11 +1118,11 @@ def buscarLibro():
 
     print()
     input("Presione Enter para volver al menú...")
-    menuNavegacion()
+    menuNavegacion(usuario_actual)
 
 
 # Función - Alquilar un libro disponible
-def alquilarLibro():
+def alquilarLibro(usuario_actual):
     '''
         Muestra todos los libros disponibles, y permite alquilar uno.
     '''
@@ -897,6 +1131,22 @@ def alquilarLibro():
     print("  Libros disponibles")
     print("  Ingrese el número del libro que quiere alquilar")
     print("─" * 60)
+    
+    # Verificar si el usuario tiene una restricción activa
+    tiene_restriccion, dias_restantes = tiene_restriccion_activa(usuario_actual)
+    if tiene_restriccion:
+        print()
+        print("   ⛔ NO PUEDES ALQUILAR LIBROS")
+        print(f"   Tienes una restricción activa por préstamos vencidos.")
+        print(f"   Días restantes de restricción: {dias_restantes}")
+        print(f"   Restricción hasta: {usuario_actual['restriccion_hasta']}")
+        print()
+        print("   Por favor, devuelve tus libros vencidos y espera a que expire la restricción.")
+        print()
+        input("Presione Enter para volver al menú...")
+        menuNavegacion(usuario_actual)
+        return
+    
     contador_libros_disponibles = 0
     print()
 
@@ -928,7 +1178,7 @@ def alquilarLibro():
     menu_selected = input_entero_seguro("   →  ", min_valor=-1)
 
     if menu_selected == -1:
-        menuNavegacion()
+        menuNavegacion(usuario_actual)
     else:
         # Primero buscar el libro para obtener el stock disponible (sin modificar el archivo aún)
         try:
@@ -980,7 +1230,7 @@ def alquilarLibro():
             print("✗ Error: Este libro no tiene stock disponible.")
             print()
             input("Presione Enter para volver al menú...")
-            menuNavegacion()
+            menuNavegacion(usuario_actual)
             return
         
         # Preguntar por la cantidad de copias
@@ -1042,7 +1292,7 @@ def alquilarLibro():
     
 
     
-    menuNavegacion()
+    menuNavegacion(usuario_actual)
 
 
 # Función - Devolver un libro alquilado
@@ -1065,18 +1315,19 @@ def devolverLibro(usuario_actual):
 
    
 
+    print("   Ingrese el número del libro que quiere devolver:")
     print("   -1) Volver al menu")
     print()
     menu_selected = input_entero_seguro("   →  ", min_valor=-1, max_valor=len(libros_encontrados))
 
     if menu_selected == -1:
-        menuNavegacion()
+        menuNavegacion(usuario_actual)
     else:
         # Verificar que el índice sea válido
         if menu_selected < 1 or menu_selected > len(libros_encontrados):
             print("Error: Número de libro inválido.")
             input("Presione Enter para volver al menú...")
-            menuNavegacion()
+            menuNavegacion(usuario_actual)
             return
             
         # Obtener el prestamo_id, libro_id y cantidad del libro seleccionado
@@ -1092,6 +1343,13 @@ def devolverLibro(usuario_actual):
             # Eliminar usando el prestamo_id (que es único)
             del usuarios[usuario_actual["email"]]["prestamos"][prestamo_id]
             usuario_actual["prestamos"] = usuarios[usuario_actual["email"]]["prestamos"]
+            
+            # Verificar si este era el último préstamo vencido y limpiar restricción
+            prestamos_vencidos_restantes = obtener_prestamos_vencidos(usuario_actual["prestamos"])
+            if not prestamos_vencidos_restantes:
+                # No hay más préstamos vencidos, limpiar restricción
+                usuarios[usuario_actual["email"]]["restriccion_hasta"] = None
+                usuario_actual["restriccion_hasta"] = None
 
             guardar_usuarios(usuarios)
 
@@ -1104,7 +1362,7 @@ def devolverLibro(usuario_actual):
             print()
 
         input("Presione Enter para volver al menú...")
-        menuNavegacion()
+        menuNavegacion(usuario_actual)
 
 # Función - Ver mis prestamos activos
 def verMisPrestamosActivos(usuario_actual):
@@ -1116,21 +1374,27 @@ def verMisPrestamosActivos(usuario_actual):
     print(f'  Prestamos activos de {usuario_actual["nombre"]}')
     print("─" * 50)
 
-    buscar_libros_por_ids(usuario_actual["prestamos"])
+    buscar_libros_por_ids(usuario_actual["prestamos"], mostrar_vencidos=True)
 
     if not usuario_actual["prestamos"]:
         print()
         print("No hay prestamos activos.")
         print()
     else:
+        # Contar cuántos están vencidos
+        prestamos_vencidos = obtener_prestamos_vencidos(usuario_actual["prestamos"])
+        if prestamos_vencidos:
+            print()
+            print(f"   ⚠️  Atención: Tienes {len(prestamos_vencidos)} libro(s) vencido(s).")
+            print("   Por favor, devuélvelos lo antes posible para evitar más restricciones.")
         print()
     print()
     input("Presione Enter para volver al menú...")
-    menuNavegacion()
+    menuNavegacion(usuario_actual)
 
 
 # Función - Agregar libro (admin)
-def agregarLibro():
+def agregarLibro(usuario_actual):
     '''
         Función de administrador que permite agregar un libro a la biblioteca.
     '''
@@ -1140,15 +1404,11 @@ def agregarLibro():
     print("─" * 50)
     print()
 
-    print("Ingrese el libro_id:")
-    agregar_libro_id = input("   →  ")
+    # Generar un libro_id aleatorio único
+    agregar_libro_id = None
+    while agregar_libro_id is None or verificar_libro_id_existe(agregar_libro_id):
+        agregar_libro_id = str(random.randint(10000000, 99999999))
 
-    while not agregar_libro_id or not agregar_libro_id.strip():
-        print("El libro_id no puede estar vacío. Ingrese el nuevo libro_id")
-        agregar_libro_id = input("   →  ")
-    agregar_libro_id = sanitizar_texto_csv(agregar_libro_id)
-    
-    print()
 
     print("Ingrese el título del libro:")
     agregar_titulo = input("   →  ")
@@ -1210,42 +1470,64 @@ def agregarLibro():
     print("✓ Se han agregado {0} copias del libro: '{1}', de {2}, con el ID {3}.".format(agregar_stock, agregar_titulo, agregar_autor, agregar_libro_id))
     print()
     input("Presione Enter para volver al menú...")
-    menuNavegacion()
+    menuNavegacion(usuario_actual)
 
 
 # Función - Modificar libro (admin)
-def modificarLibro():
+def modificarLibro(usuario_actual):
     '''
         Función de administrador que permite modificar un libro de la biblioteca.
     '''
     print()
-    print("─" * 50)
+    print("─" * 60)
     print("  Modificar libros")
-    print("─" * 50)
-    print("Ingrese el libro_id del libro que desea modificar (Ingrese -1 para volver al menu)")
+    print("─" * 60)
     print()
-    libro_id_a_modificar = input("   →  ")
-    
-    while not libro_id_a_modificar or not libro_id_a_modificar.strip():
-        print("Error: El libro_id no puede estar vacío.")
-        libro_id_a_modificar = input("   →  ")
-    
-    libro_id_a_modificar = libro_id_a_modificar.strip()
 
-    if libro_id_a_modificar == "-1":
-        menuNavegacion()
-    
-    # Buscar el libro en el CSV (línea por línea, sin cargar todo en memoria)
-    try:
-        libro_encontrado = False
-        libro_datos = {}
+    print("Ingrese el género del libro que desea modificar:")
+    genero_seleccionado = input("   →  ")
+
+    while not genero_seleccionado:
+        print("Error, el género no puede estar vacío. Ingrese el género del libro que desea modificar")
+        genero_seleccionado = input("   →  ")
+
+    print()
+    print("Ingrese el título del libro que desea modificar:")
+    titulo_seleccionado = input("   →  ")
+
+    while not titulo_seleccionado:
+        print("Error, el título no puede estar vacío. Ingrese el título del libro que desea modificar")
+        titulo_seleccionado = input("   →  ")
         
-        with open("data.csv", "rt") as arch:
-            # Saltar encabezado
-            arch.readline()
+    print()
+    print("═" * 60)
+    print("  RESULTADOS DE BÚSQUEDA")
+    print("═" * 60)
+    leer_libros(lambda libro: libro["genero"].lower() == genero_seleccionado.lower() and (titulo_seleccionado.lower() == libro["titulo"].lower() or titulo_seleccionado.lower() in libro["titulo"].lower()), max_a_mostrar=1000, pagina=1)
+
+    print()
+    print("   Ingrese el número del libro que desea modificar:")
+    print("   -1) Volver al menu")
+    print()
+    menu_selected = input_entero_seguro("   →  ", min_valor=-1)
+
+    if menu_selected == -1:
+        menuNavegacion(usuario_actual)
+    else:
+        # Buscar el libro seleccionado por su posición en el filtro
+        try:
+            arch = open("data.csv", "rt")
+            arch.readline()  # Saltar encabezados
             
-            # Leer línea por línea
-            for linea in arch:
+            contador_actual = 1
+            libro_datos = None
+            
+            while True:
+                linea = arch.readline()
+                if not linea:
+                    break
+                
+                # Proteger contra líneas malformadas
                 try:
                     partes = linea.split(';')
                     if len(partes) != 7:
@@ -1254,100 +1536,243 @@ def modificarLibro():
                     libro_id, titulo, autor, genero, fecha_publicacion, editorial, stock = partes
                     stock = stock.rstrip("\n")
                     
-                    if libro_id == libro_id_a_modificar:
-                        libro_encontrado = True
-                        libro_datos = {
-                            "libro_id": libro_id,
-                            "titulo": titulo,
-                            "autor": autor,
-                            "genero": genero,
-                            "fecha_publicacion": fecha_publicacion,
-                            "editorial": editorial,
-                            "stock": stock
-                        }
-                        break  # Salir del loop inmediatamente
+                    libro_temp = {
+                        "libro_id": libro_id,
+                        "titulo": titulo,
+                        "autor": autor,
+                        "genero": genero,
+                        "fecha_publicacion": fecha_publicacion,
+                        "editorial": editorial,
+                        "stock": stock
+                    }
+                    
+                    # Aplicar mismo filtro
+                    if libro_temp["genero"].lower() == genero_seleccionado.lower() and (titulo_seleccionado.lower() == libro_temp["titulo"].lower() or titulo_seleccionado.lower() in libro_temp["titulo"].lower()):
+                        if contador_actual == menu_selected:
+                            libro_datos = libro_temp
+                            break
+                        contador_actual += 1
                 except (ValueError, IndexError):
                     # Saltar líneas que causen error
                     continue
-        
-        if not libro_encontrado:
-            print("Error, no se encontró el libro con ese ID.")
+            
+            arch.close()
+            
+            if not libro_datos:
+                print()
+                print("✗ Error, no se encontró el libro que desea modificar.")
+                print()
+                input("Presione Enter para volver al menú...")
+                menuNavegacion(usuario_actual)
+                return
+            
+            # Mostrar el libro encontrado
+            print()
+            print("═" * 60)
+            print(f"  MODIFICANDO: {libro_datos['titulo']}")
+            print("═" * 60)
+            print()
+            
+            # Modificar título
+            print(f"Título actual: {libro_datos['titulo']}")
+            print("Ingrese el nuevo título (deje vacío para mantener el actual):")
+            nuevo_titulo = input("   →  ")
+            if nuevo_titulo and nuevo_titulo.strip():
+                libro_datos["titulo"] = sanitizar_texto_csv(nuevo_titulo)
+            print()
+            
+            # Modificar autor
+            print(f"Autor actual: {libro_datos['autor']}")
+            print("Ingrese el nuevo autor (deje vacío para mantener el actual):")
+            nuevo_autor = input("   →  ")
+            if nuevo_autor and nuevo_autor.strip():
+                libro_datos["autor"] = sanitizar_texto_csv(nuevo_autor)
+            print()
+            
+            # Modificar género
+            print(f"Género actual: {libro_datos['genero']}")
+            print("Ingrese el nuevo género (deje vacío para mantener el actual):")
+            nuevo_genero = input("   →  ")
+            if nuevo_genero and nuevo_genero.strip():
+                libro_datos["genero"] = sanitizar_texto_csv(nuevo_genero)
+            print()
+            
+            # Modificar fecha de publicación
+            print(f"Fecha de publicación actual: {libro_datos['fecha_publicacion']}")
+            print("Ingrese la nueva fecha de publicación (deje vacío para mantener la actual):")
+            nueva_fecha = input("   →  ")
+            if nueva_fecha and nueva_fecha.strip():
+                libro_datos["fecha_publicacion"] = sanitizar_texto_csv(nueva_fecha)
+            print()
+            
+            # Modificar editorial
+            print(f"Editorial actual: {libro_datos['editorial']}")
+            print("Ingrese la nueva editorial (deje vacío para mantener la actual):")
+            nueva_editorial = input("   →  ")
+            if nueva_editorial and nueva_editorial.strip():
+                libro_datos["editorial"] = sanitizar_texto_csv(nueva_editorial)
+            print()
+            
+            # Modificar stock
+            print(f"Stock actual: {libro_datos['stock']}")
+            print("Ingrese el nuevo stock (deje vacío para mantener el actual):")
+            nuevo_stock_input = input("   →  ")
+            if nuevo_stock_input and nuevo_stock_input.strip():
+                try:
+                    nuevo_stock = int(nuevo_stock_input.strip())
+                    if nuevo_stock >= 0:
+                        libro_datos["stock"] = str(nuevo_stock)
+                    else:
+                        print("Error: El stock no puede ser negativo. Se mantendrá el valor actual.")
+                except ValueError:
+                    print("Error: Stock inválido. Se mantendrá el valor actual.")
+            print()
+            
+            # Guardar los cambios
+            guardar_libros(libro_datos)
+            
+            print()
+            print("✓ El libro ha sido modificado correctamente.")
             print()
             input("Presione Enter para volver al menú...")
-            menuNavegacion()
-        
-        # Permitir modificar el libro
-        print()
-        print("   1) Modificar el titulo")
-        print("   2) Modificar el autor")
-        print("   3) Modificar el stock disponible")
-        print()
-        parte_a_modificar = input_entero_seguro("   →  ", min_valor=1, max_valor=3)
-
-        if parte_a_modificar == 1:
-            print(f'      Título actual: {libro_datos["titulo"]}')
-            print("Ingrese el nuevo título")
-            nuevo_titulo = input("   →  ")
-            while not nuevo_titulo or not nuevo_titulo.strip():
-                print("Error: El título no puede estar vacío.")
-                nuevo_titulo = input("   →  ")
-            libro_datos["titulo"] = sanitizar_texto_csv(nuevo_titulo)
-        elif parte_a_modificar == 2:
-            print(f'      Autor actual: {libro_datos["autor"]}')
-            print("Ingrese el nuevo autor")
-            nuevo_autor = input("   →  ")
-            while not nuevo_autor or not nuevo_autor.strip():
-                print("Error: El autor no puede estar vacío.")
-                nuevo_autor = input("   →  ")
-            libro_datos["autor"] = sanitizar_texto_csv(nuevo_autor)
-        elif parte_a_modificar == 3:
-            print(f'      Stock actual: {libro_datos["stock"]}')
-            print("Ingrese el nuevo stock")
-            nuevo_stock = input_entero_seguro("   →  ", min_valor=0)
-            libro_datos["stock"] = str(nuevo_stock)
-        
-        # Guardar los cambios usando guardar_libros
-        guardar_libros(libro_datos)
-        
-        print()
-        print("✓ Datos actualizados correctamente.")
-        print()
-        input("Presione Enter para volver al menú...")
-        menuNavegacion()
-        
-    except Exception as e:
-        print(f"Error al modificar el libro: {e}")
-        print()
-        input("Presione Enter para volver al menú...")
-        menuNavegacion()
+            menuNavegacion(usuario_actual)
+            
+        except Exception as e:
+            print(f"Error al modificar el libro: {e}")
+            print()
+            input("Presione Enter para volver al menú...")
+            menuNavegacion(usuario_actual)
 
 
 # Función - Eliminar libro (admin)
-def eliminarLibro():
+def eliminarLibro(usuario_actual):
     '''
         Función de administrador que permite eliminar un libro de la biblioteca.
     '''
     print()
-    print("─" * 50)
+    print("─" * 60)
     print("  Eliminar un libro")
-    print("─" * 50)
-    print("Ingrese el libro_id del libro que quiere eliminar (Ingrese -1 para volver al menu)")
+    print("─" * 60)
     print()
-    input_libro_id = input("   →  ")
-    
-    while not input_libro_id or not input_libro_id.strip():
-        print("Error: El libro_id no puede estar vacío.")
-        input_libro_id = input("   →  ")
-    
-    input_libro_id = input_libro_id.strip()
 
-    if input_libro_id == "-1":
-        menuNavegacion()
+    print("Ingrese el género del libro que desea eliminar:")
+    genero_seleccionado = input("   →  ")
+
+    while not genero_seleccionado:
+        print("Error, el género no puede estar vacío. Ingrese el género del libro que desea eliminar")
+        genero_seleccionado = input("   →  ")
+
+    print()
+    print("Ingrese el título del libro que desea eliminar:")
+    titulo_seleccionado = input("   →  ")
+
+    while not titulo_seleccionado:
+        print("Error, el título no puede estar vacío. Ingrese el título del libro que desea eliminar")
+        titulo_seleccionado = input("   →  ")
+        
+    print()
+    print("═" * 60)
+    print("  RESULTADOS DE BÚSQUEDA")
+    print("═" * 60)
+    leer_libros(lambda libro: libro["genero"].lower() == genero_seleccionado.lower() and (titulo_seleccionado.lower() == libro["titulo"].lower() or titulo_seleccionado.lower() in libro["titulo"].lower()), max_a_mostrar=1000, pagina=1)
+
+    print()
+    print("   Ingrese el número del libro que desea eliminar:")
+    print("   -1) Volver al menu")
+    print()
+    menu_selected = input_entero_seguro("   →  ", min_valor=-1)
+
+    if menu_selected == -1:
+        menuNavegacion(usuario_actual)
     else:
-        # Buscar y eliminar el libro en el CSV (línea por línea, sin cargar todo en memoria)
+        # Buscar el libro seleccionado por su posición en el filtro
         try:
+            arch = open("data.csv", "rt")
+            arch.readline()  # Saltar encabezados
+            
+            contador_actual = 1
+            libro_datos = None
+            
+            while True:
+                linea = arch.readline()
+                if not linea:
+                    break
+                
+                # Proteger contra líneas malformadas
+                try:
+                    partes = linea.split(';')
+                    if len(partes) != 7:
+                        continue  # Saltar líneas con formato incorrecto
+                        
+                    libro_id, titulo, autor, genero, fecha_publicacion, editorial, stock = partes
+                    stock = stock.rstrip("\n")
+                    
+                    libro_temp = {
+                        "libro_id": libro_id,
+                        "titulo": titulo,
+                        "autor": autor,
+                        "genero": genero,
+                        "fecha_publicacion": fecha_publicacion,
+                        "editorial": editorial,
+                        "stock": stock
+                    }
+                    
+                    # Aplicar mismo filtro
+                    if libro_temp["genero"].lower() == genero_seleccionado.lower() and (titulo_seleccionado.lower() == libro_temp["titulo"].lower() or titulo_seleccionado.lower() in libro_temp["titulo"].lower()):
+                        if contador_actual == menu_selected:
+                            libro_datos = libro_temp
+                            break
+                        contador_actual += 1
+                except (ValueError, IndexError):
+                    # Saltar líneas que causen error
+                    continue
+            
+            arch.close()
+            
+            if not libro_datos:
+                print()
+                print("✗ Error, no se encontró el libro que desea eliminar.")
+                print()
+                input("Presione Enter para volver al menú...")
+                menuNavegacion(usuario_actual)
+                return
+            
+            # Mostrar el libro encontrado
+            print()
+            print("═" * 60)
+            print("  INFORMACIÓN DEL LIBRO A ELIMINAR")
+            print("═" * 60)
+            print(f"Título:              {libro_datos['titulo']}")
+            print(f"Autor:               {libro_datos['autor']}")
+            print(f"Género:              {libro_datos['genero']}")
+            print(f"Fecha publicación:   {libro_datos['fecha_publicacion']}")
+            print(f"Editorial:           {libro_datos['editorial']}")
+            print(f"Stock:               {libro_datos['stock']}")
+            print(f"ID:                  {libro_datos['libro_id']}")
+            print("═" * 60)
+            print()
+            
+            # PRIMERA COMPROBACIÓN
+            print("Esta acción eliminará el libro permanentemente.")
+            print()
+            print("¿Está seguro que desea eliminar este libro?")
+            print("   1) Sí, eliminar")
+            print("   2) No, cancelar")
+            print()
+            primera_confirmacion = input_entero_seguro("   →  ", min_valor=1, max_valor=2)
+            
+            if primera_confirmacion != 1:
+                print()
+                print("✓ Operación cancelada. El libro no fue eliminado.")
+                print()
+                input("Presione Enter para volver al menú...")
+                menuNavegacion(usuario_actual)
+                return
+            
+            # Proceder con la eliminación
+            input_libro_id = libro_datos["libro_id"]
             libro_encontrado = False
-            titulo_libro = ""
+            titulo_libro = libro_datos["titulo"]
             
             with open("data.csv", "rt") as original:
                 with open("data_temp.csv", "wt") as temporal:
@@ -1364,11 +1789,9 @@ def eliminarLibro():
                                 continue
                                 
                             libro_id = partes[0]
-                            titulo = partes[1]
                             
                             if libro_id == input_libro_id:
                                 libro_encontrado = True
-                                titulo_libro = titulo
                                 # No escribir esta línea (eliminar el libro)
                             else:
                                 # Mantener línea original
@@ -1378,7 +1801,8 @@ def eliminarLibro():
                             temporal.write(linea)
             
             if not libro_encontrado:
-                print("Error, el libro que quiere eliminar no existe.")
+                print()
+                print("✗ Error, el libro que quiere eliminar no existe.")
                 print()
                 # Eliminar archivo temporal
                 try:
@@ -1386,7 +1810,8 @@ def eliminarLibro():
                 except:
                     pass
                 input("Presione Enter para volver al menú...")
-                menuNavegacion()
+                menuNavegacion(usuario_actual)
+                return
             
             # Reemplazar archivo original con el temporal
             os.replace("data_temp.csv", "data.csv")
@@ -1419,7 +1844,7 @@ def eliminarLibro():
             print("✓ El libro '{0}' fue eliminado correctamente.".format(titulo_libro))
             print()
             input("Presione Enter para volver al menú...")
-            menuNavegacion()
+            menuNavegacion(usuario_actual)
             
         except Exception as e:
             print(f"Error al eliminar el libro: {e}")
@@ -1430,11 +1855,11 @@ def eliminarLibro():
                 pass
             print()
             input("Presione Enter para volver al menú...")
-            menuNavegacion()
+            menuNavegacion(usuario_actual)
 
 
 # # Función - Prestamos activos de todos los usuarios (admin)
-def verTodosLosPrestamosActivos():
+def verTodosLosPrestamosActivos(usuario_actual):
     '''
         Función de administrador que permite ver todos los prestamos activos de todos los usuarios.
     '''
@@ -1452,31 +1877,132 @@ def verTodosLosPrestamosActivos():
                 continue
             
             nombre = usuarios[email].get("nombre", "Usuario")
+            correo = usuarios[email].get("correo", "")
             prestamos_del_usuario = usuarios[email].get("prestamos", {})
 
             if prestamos_del_usuario:
-                print(nombre.capitalize() + ":", len(prestamos_del_usuario),"préstamo(s)")
                 print()
+                print()
+                print(nombre.capitalize() + " (" + correo.capitalize() + "):", len(prestamos_del_usuario), ("préstamo" if len(prestamos_del_usuario) == 1 else "préstamos"))
             
                 # Usar la función buscar_libros_por_ids para obtener los datos de los libros
                 libros_encontrados = buscar_libros_por_ids(prestamos_del_usuario)
                 
-                for libro in libros_encontrados:
-                    try:
-                        print("   ", libro.get("titulo", "Sin título"))
-                        print("      - Autor:", libro.get("autor", "Desconocido"))
-                        print("      - Cantidad:", libro.get("cantidad", "N/A"))
-                        print("      - Fecha alquiler:", libro.get("fecha_alquiler", "N/A"))
-                        print("      - Fecha vencimiento:", libro.get("fecha_vencimiento", "N/A"))
-                        print()
-                    except (KeyError, TypeError):
-                        continue
-                print()
+                
         except (KeyError, TypeError):
             # Saltar usuarios con estructura incorrecta
             continue
     input("Presione Enter para volver al menú...")
-    menuNavegacion()
+    menuNavegacion(usuario_actual)
+
+
+# # Función - Ver préstamos vencidos (admin)
+def verPrestamosVencidos(usuario_actual):
+    '''
+        Función de administrador que permite ver todos los préstamos vencidos de todos los usuarios.
+        Utiliza una matriz para organizar y procesar los datos de usuarios con deudas.
+    '''
+    # Verificar que el usuario sea administrador
+    if not usuario_actual.get("administrador", False):
+        print()
+        print("   ⛔ Acceso denegado. Esta función es solo para administradores.")
+        print()
+        input("Presione Enter para volver al menú...")
+        menuNavegacion(usuario_actual)
+        return
+    
+    print()
+    print("─" * 60)
+    print("  PRÉSTAMOS VENCIDOS - Reporte de Deudores")
+    print("─" * 60)
+    
+    usuarios = leer_usuarios()
+    
+    # MATRIZ: Organizar datos de usuarios con deudas
+    # Fila 0: Encabezados ["nombre", "email", "total_libros", "max_dias_retraso", "prestamos_vencidos"]
+    # Filas 1+: Datos de cada usuario con deudas
+    matriz_deudores = [
+        ["nombre", "email", "total_libros", "max_dias_retraso", "prestamos_vencidos"]
+    ]
+    
+    # Recopilar usuarios con préstamos vencidos en la matriz
+    for email in usuarios:
+        try:
+            # Verificar que el usuario tenga la estructura correcta
+            if not isinstance(usuarios[email], dict):
+                continue
+            
+            nombre = usuarios[email].get("nombre", "Usuario")
+            prestamos_del_usuario = usuarios[email].get("prestamos", {})
+            
+            # Obtener solo préstamos vencidos
+            prestamos_vencidos = obtener_prestamos_vencidos(prestamos_del_usuario)
+            
+            if prestamos_vencidos:
+                # Calcular el máximo de días de retraso para este usuario
+                max_dias_retraso = 0
+                for prestamo_data in prestamos_vencidos.values():
+                    dias_vencidos = calcular_dias_vencidos(prestamo_data["fecha_vencimiento"])
+                    if dias_vencidos > max_dias_retraso:
+                        max_dias_retraso = dias_vencidos
+                
+                # Agregar fila a la matriz con los datos del usuario deudor
+                matriz_deudores.append([
+                    nombre,
+                    email,
+                    len(prestamos_vencidos),
+                    max_dias_retraso,
+                    prestamos_vencidos
+                ])
+                
+        except (KeyError, TypeError):
+            # Saltar usuarios con estructura incorrecta
+            continue
+    
+    # Mostrar resultados usando la matriz
+    # La matriz tiene al menos 2 filas (encabezados + 1 usuario) si hay deudores
+    if len(matriz_deudores) == 1:  # Solo encabezados, no hay deudores
+        print()
+        print("   ✓ No hay préstamos vencidos en el sistema.")
+        print()
+    else:
+        # Hay deudores (matriz tiene más de 1 fila)
+        total_deudores = len(matriz_deudores) - 1  # -1 para excluir encabezados
+        print()
+        print(f"   ⚠️  Total de usuarios con préstamos vencidos: {total_deudores}")
+        print()
+        
+        # Recorrer la matriz desde la fila 1 (saltar encabezados en fila 0)
+        for i in range(1, len(matriz_deudores)):
+            fila = matriz_deudores[i]
+            nombre = fila[0]
+            email = fila[1]
+            total_libros = fila[2]
+            max_dias_retraso = fila[3]
+            prestamos_vencidos = fila[4]
+            
+            print()
+            print("═" * 60)
+            print(f"  Usuario: {nombre}")
+            print(f"  Email: {email}")
+            print(f"  Libros vencidos: {total_libros}")
+            print(f"  Máximo retraso: {max_dias_retraso} día(s)")
+            print("═" * 60)
+            
+            # Mostrar los libros vencidos de este usuario
+            libros_encontrados = buscar_libros_por_ids(prestamos_vencidos)
+            
+            # Mostrar información adicional sobre días de retraso
+            if libros_encontrados:
+                print()
+                print("   Detalle de días de retraso:")
+                for libro in libros_encontrados:
+                    dias_vencidos = calcular_dias_vencidos(libro['fecha_vencimiento'])
+                    print(f"   - {libro['titulo']}: {dias_vencidos} día(s) de retraso")
+                print()
+    
+    input("Presione Enter para volver al menú...")
+    menuNavegacion(usuario_actual)
 
 
 # # Función - Cerrar sesón
@@ -1492,7 +2018,8 @@ def cerrarSesion(usuario_actual):
         "nombre": "usuario",
         "contrasenia": "",
         "prestamos": {},
-        "administrador": False
+        "administrador": False,
+        "restriccion_hasta": None
     }
     showWelcome(usuario_actual)
 
@@ -1509,7 +2036,7 @@ def salirDelPrograma(usuario_actual):
 
 
 # # Función - Menú de navegación
-def menuNavegacion():
+def menuNavegacion(usuario_actual):
     '''
         Función que permite navegar por el programa.
     '''
@@ -1528,34 +2055,37 @@ def menuNavegacion():
             print("   7) Modificar un libro")
             print("   8) Eliminar un libro de la biblioteca")
             print("   9) Ver todos los prestamos activos")
+            print("   10) Ver préstamos vencidos (reporte de deudores)")
         print()
         print("   -1) Cerrar sesión")
         print("   -2) Salir del programa")
         print()
         
         # Determinar el rango válido según si es administrador o no
-        max_opcion = 9 if usuario_actual["administrador"] else 5
+        max_opcion = 10 if usuario_actual["administrador"] else 5
         menu_selected = input_entero_seguro("   →  ", min_valor=-2, max_valor=max_opcion)
         print()
 
         if menu_selected == 1:
-            verTodosLosLibros()
+            verTodosLosLibros(usuario_actual)
         elif menu_selected == 2:
-            buscarLibro()
+            buscarLibro(usuario_actual)
         elif menu_selected == 3:
-            alquilarLibro()
+            alquilarLibro(usuario_actual)
         elif menu_selected == 4:
             devolverLibro(usuario_actual)
         elif menu_selected == 5:
             verMisPrestamosActivos(usuario_actual)
         elif menu_selected == 6:
-            agregarLibro()
+            agregarLibro(usuario_actual)
         elif menu_selected == 7:
-            modificarLibro()
+            modificarLibro(usuario_actual)
         elif menu_selected == 8:
-            eliminarLibro()
+            eliminarLibro(usuario_actual)
         elif menu_selected == 9:
-            verTodosLosPrestamosActivos()
+            verTodosLosPrestamosActivos(usuario_actual)
+        elif menu_selected == 10:
+            verPrestamosVencidos(usuario_actual)
         elif menu_selected == -1:
             cerrarSesion(usuario_actual)
         elif menu_selected == -2:
