@@ -1,7 +1,7 @@
 import json
 import os
 import random
-from datetime import date, datetime
+from datetime import date
 
 usuario_actual = {
     "email": "",
@@ -156,10 +156,40 @@ def agregar_dias_a_fecha(dia, mes, anio, dias_a_agregar):
     
     return (dia, mes, anio)
 
+# Función - Convertir fecha a días totales desde el año 1
+def fecha_a_dias_totales(dia, mes, anio):
+    """
+    Convierte una fecha a número total de días desde el año 1.
+    
+    Args:
+        dia, mes, anio: Fecha a convertir
+    
+    Returns:
+        Número total de días desde el año 1
+    """
+    # Calcular días totales por años completos
+    dias_totales = 0
+    
+    # Contar días de todos los años anteriores
+    for a in range(1, anio):
+        if es_anio_bisiesto(a):
+            dias_totales += 366
+        else:
+            dias_totales += 365
+    
+    # Sumar días de los meses completos del año actual
+    for m in range(1, mes):
+        dias_totales += obtener_dias_del_mes(m, anio)
+    
+    # Sumar los días del mes actual
+    dias_totales += dia
+    
+    return dias_totales
+
 # Función - Calcular días entre dos fechas
 def calcular_dias_entre_fechas(dia1, mes1, anio1, dia2, mes2, anio2):
     """
-    Calcula la diferencia en días entre dos fechas.
+    Calcula la diferencia en días entre dos fechas de forma nativa.
     
     Args:
         dia1, mes1, anio1: Primera fecha
@@ -169,9 +199,12 @@ def calcular_dias_entre_fechas(dia1, mes1, anio1, dia2, mes2, anio2):
         Número de días de diferencia (positivo si fecha2 > fecha1)
     """
     try:
-        fecha1 = datetime(anio1, mes1, dia1)
-        fecha2 = datetime(anio2, mes2, dia2)
-        diferencia = (fecha2 - fecha1).days
+        # Convertir ambas fechas a días totales
+        dias_fecha1 = fecha_a_dias_totales(dia1, mes1, anio1)
+        dias_fecha2 = fecha_a_dias_totales(dia2, mes2, anio2)
+        
+        # Calcular la diferencia
+        diferencia = dias_fecha2 - dias_fecha1
         return diferencia
     except:
         return 0
